@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LIWA | Master Gold v3.3</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    :root { --brand: #1A1A1A; --orange: #F05A3E; --bg: #F8F9FA; --calBlue: #4285F4; }
+    body { background: var(--bg); font-family: 'Segoe UI', sans-serif; color: var(--brand); }
+    #loginPage { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--brand); }
+    .login-card { width: 380px; padding: 45px; border-radius: 12px; background: white; text-align: center; border-top: 5px solid var(--orange); }
+    #mainApp { display: none; padding: 25px; }
+    .header-bar { background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border-left: 6px solid var(--orange); }
+    .nav-tabs .nav-link.active { color: var(--orange); border-bottom: 3px solid var(--orange); background: none; font-weight: 700; }
+    .stat-card { background: white; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee; }
+    .stat-val { font-size: 1.3rem; font-weight: 800; color: var(--orange); }
+    .analysis-card { background: white; border: none; border-radius: 12px; padding: 20px; margin-bottom: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-left: 5px solid var(--brand); }
+    .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .admin-grid .analysis-card { margin-bottom: 0; }
+    .user-pill { font-size: 0.72rem; padding: 5px 12px; background: #fdfdfd; border-radius: 30px; border: 1px solid #eee; margin: 3px; display: inline-block; font-weight: 600; }
+    .cost-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f1f1; font-size: 0.9rem; }
+    .fuzzy-warning { font-size: 0.7rem; color: #856404; background: #fff3cd; padding: 6px 10px; border-radius: 4px; display: none; margin-top: 5px; border-left: 3px solid #856404; }
+    .btn-edit { color: #888; cursor: pointer; margin-right: 10px; font-size: 1.1rem; }
+    input[readonly] { background-color: #f8f9fa !important; }
+    .sync-bar { background:#eef3fe; border:1px solid #d6e2fb; border-left:5px solid var(--calBlue); border-radius:10px; padding:12px 16px; margin-bottom:18px; }
+    .sync-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#bbb; margin-right:6px; vertical-align:middle; }
+    .sync-dot.on { background:#28a745; }
+    input[list] {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 12px;
+        padding-right: 30px;
+    }
+
+    @media print {
+        .nav-tabs, .header-bar, .btn, #adminArea, .d-print-none, .fuzzy-warning, .sync-bar { display: none !important; }
+        body { background: white !important; }
+        .analysis-card { border: 1px solid #eee !important; box-shadow: none !important; break-inside: avoid; }
+        .tab-content > .tab-pane { display: none !important; }
+        .tab-content > .active { display: block !important; }
+    }
+
+    /* ---------- Floating live timer widget ---------- */
+    #timerFab {
+        position: fixed; bottom: 24px; right: 24px; z-index: 1050;
+        width: 56px; height: 56px; border-radius: 50%;
+        background: linear-gradient(145deg, #2a2a2a, var(--brand));
+        color: var(--orange); font-size: 1.4rem;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+        cursor: pointer; border: 2px solid rgba(240,90,62,0.4);
+    }
+    #timerFab.tf-running { animation: twFabPulse 1.6s infinite; }
+    @keyframes twFabPulse {
+        0% { box-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 0 0 0 rgba(240,90,62,0.5); }
+        70% { box-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 0 0 10px rgba(240,90,62,0); }
+        100% { box-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 0 0 0 rgba(240,90,62,0); }
+    }
+    #timerWidget {
+        position: fixed; bottom: 24px; right: 24px; z-index: 1060;
+        width: 320px; min-width: 260px; min-height: 210px; max-width: 90vw; max-height: 80vh;
+        border-radius: 16px; overflow: auto;
+        background: linear-gradient(160deg, #2c2c2c 0%, #141414 100%);
+        box-shadow: 0 14px 34px rgba(0,0,0,0.5);
+        padding: 12px 16px 16px; color: #eee;
+    }
+    /* Custom resize handle on the BOTTOM-LEFT — the browser's native `resize` grip can only
+       ever sit bottom-right, so a left-side handle has to be hand-built with drag logic. */
+    #twResizeHandle {
+        position: absolute; bottom: 3px; left: 6px; font-size: 0.8rem; color: rgba(255,255,255,0.35);
+        cursor: sw-resize; line-height: 1; user-select: none; padding: 4px;
+    }
+    #twResizeHandle:hover { color: rgba(255,255,255,0.7); }
+    .tw-topbar { display: flex; justify-content: space-between; align-items: center; color: #8a8a8a; font-size: 0.9rem; margin-bottom: 4px; }
+    .tw-topbar span { cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .tw-topbar span:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .tw-display {
+        font-family: 'Consolas', 'Courier New', monospace; font-weight: 800; letter-spacing: 2px;
+        font-size: 2rem; color: var(--orange); text-shadow: 0 0 14px rgba(240,90,62,0.35);
+        margin: 4px 0 12px;
+    }
+    .tw-body { display: flex; align-items: center; gap: 12px; }
+    .tw-fields { flex: 1; min-width: 0; }
+    .tw-autocomplete-wrap { position: relative; }
+    .tw-suggest {
+        position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
+        background: #1e1e1e; border: 1px solid #3a3a3a; border-radius: 6px;
+        max-height: 140px; overflow-y: auto; display: none; margin-top: 2px;
+        box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+    }
+    .tw-suggest div { padding: 6px 10px; font-size: 0.82rem; color: #eee; cursor: pointer; }
+    .tw-suggest div:hover { background: var(--orange); color: #fff; }
+    .tw-fields input { background: #1e1e1e; border: 1px solid #3a3a3a; color: #f1f1f1; font-size: 0.85rem; }
+    .tw-fields input::placeholder { color: #888; }
+    .tw-fields input:focus { background: #232323; color: #fff; border-color: var(--orange); box-shadow: none; }
+    .tw-play {
+        width: 56px; height: 56px; border-radius: 50%; border: none; flex-shrink: 0;
+        background: radial-gradient(circle at 35% 30%, #ff8a65, var(--orange));
+        color: #fff; font-size: 1.25rem; box-shadow: 0 0 0 6px rgba(240,90,62,0.15);
+        cursor: pointer;
+    }
+    .tw-play.tw-running { background: radial-gradient(circle at 35% 30%, #4a4a4a, #232323); animation: twPlayPulse 1.5s infinite; }
+    @keyframes twPlayPulse {
+        0% { box-shadow: 0 0 0 6px rgba(240,90,62,0.18); }
+        50% { box-shadow: 0 0 0 11px rgba(240,90,62,0.04); }
+        100% { box-shadow: 0 0 0 6px rgba(240,90,62,0.18); }
+    }
+    .tw-hint { font-size: 0.7rem; color: #999; margin-top: 8px; }
+    .sync-pending { font-size: 0.68rem; color: #999; font-weight: 600; display: block; }
+    .pill-click { cursor: pointer; }
+    .pill-click:hover { border-color: var(--orange); background: #fff5f2; }
+    .leave-pill { color: #555; background: #eef0f2; }
+    .leave-pill .lv-x { cursor: pointer; color: #b02a37; margin-left: 6px; font-weight: 800; }
+    .quick-range .btn { font-size: 0.75rem; }
+    #toastBox { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 2000; }
+    .app-toast { background: #1A1A1A; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); border-left: 4px solid var(--orange); }
+    @media print { #timerFab, #timerWidget { display: none !important; } }
+  </style>
+</head>
+<body>
+
+<script>
+  // POPUP-RETURN CATCHER — runs before anything else.
+  // When the calendar popup bounces back to this app with events in the URL hash,
+  // this window is just a throwaway popup: stash the data where the main tab can read
+  // it (same-origin localStorage fires a 'storage' event in the opener), then close.
+  (function () {
+    if (location.hash.indexOf('#liwacal=') === 0) {
+      try { document.documentElement.style.display = 'none'; } catch (e) {}
+      try { localStorage.setItem('liwa_cal_payload', decodeURIComponent(location.hash.slice(9))); } catch (e) {}
+      try { window.close(); } catch (e) {}
+    }
+  })();
+</script>
+
+<div id="toastBox"></div>
+<div id="loginPage">
+  <div class="login-card shadow-lg">
+    <h1 style="font-weight:800; letter-spacing:-2px;">LIWA<span style="color:var(--orange);">.</span></h1>
+    <div class="text-start mt-4">
+        <label class="small fw-bold">User ID</label><input type="text" id="userId" class="form-control mb-3">
+        <label class="small fw-bold">Password</label><input type="password" id="userPass" class="form-control mb-4">
+    </div>
+    <button class="btn btn-dark w-100 py-2 fw-bold" onclick="handleLogin()">LOGIN</button>
+    <div id="loginError" class="text-danger mt-3 small fw-bold text-center"></div>
+  </div>
+</div>
+
+<div id="mainApp">
+  <div class="header-bar d-flex justify-content-between align-items-center">
+    <h2 class="m-0 fw-bold">LIWA<span>.</span></h2>
+    <div class="d-flex align-items-center">
+        <div class="text-end me-4 pe-4 border-end">
+            <span class="text-muted small fw-bold">TOTAL HOURS</span>
+            <h4 class="m-0 fw-bold" style="color:var(--orange)"><span id="statTotalHours">0.00h</span></h4>
+        </div>
+        <div class="me-3 fw-bold" id="userNameDisplay"></div>
+        <button class="btn btn-dark btn-sm me-2 fw-bold" onclick="$('#adminArea').slideToggle()">⚙️ Settings</button>
+        <button class="btn btn-outline-danger btn-sm fw-bold" onclick="handleLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div id="adminArea" class="card p-4 mb-4" style="display:none; border: 1px dashed #ccc; border-radius: 12px;">
+    <div class="row g-2">
+      <div class="col-md-5">
+          <input type="text" id="newClient" class="form-control" placeholder="Add Client" oninput="checkFuzzy(this, 'client')">
+          <div id="fuzzy-client" class="fuzzy-warning"></div>
+      </div>
+      <div class="col-md-1"><button class="btn btn-dark w-100 fw-bold" onclick="addOption('client')">+</button></div>
+      <div class="col-md-5">
+          <input type="text" id="newProject" class="form-control" placeholder="Add Project" oninput="checkFuzzy(this, 'project')">
+          <div id="fuzzy-project" class="fuzzy-warning"></div>
+      </div>
+      <div class="col-md-1"><button class="btn btn-dark w-100 fw-bold" onclick="addOption('project')">+</button></div>
+    </div>
+  </div>
+
+  <ul class="nav nav-tabs mb-4 border-0" id="mainTabs">
+    <li class="nav-item" id="navTabLogItem"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-log" id="tab1Title">Tracker</button></li>
+    <li class="nav-item admin-only" id="navTeamOverviewItem"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-teamoverview" id="navTeamOverviewBtn" onclick="renderTeamOverview()">Daily Overview</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-report" onclick="runProjectInsights()">Project Insights</button></li>
+    <li class="nav-item admin-only superadmin-only"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-finance">Finance</button></li>
+    <li class="nav-item admin-only"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-costing" onclick="renderCosting()">Cost Breakdown</button></li>
+    <li class="nav-item admin-only"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-compliance" onclick="runCompliance()">Compliance</button></li>
+  </ul>
+
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="tab-log">
+        <div id="entryCard" class="card p-4 mb-4 shadow-sm border-0" style="border-radius:12px;">
+            <form id="trackerForm" class="row g-3">
+                <input type="hidden" id="editRowIndex" value="">
+                <div class="col-md-2"><label class="small fw-bold">Date</label><input type="date" id="date" class="form-control" onchange="onDateSelectionChange()" required></div>
+                <div class="col-md-2"><label class="small fw-bold">Start <span id="lockToggle" onclick="toggleLock()" style="cursor:pointer">🔒</span></label><input type="time" id="startTime" class="form-control" readonly></div>
+                <div class="col-md-2"><label class="small fw-bold">End</label><input type="time" id="endTime" class="form-control" required></div>
+                <div class="col-md-3">
+                    <label class="small fw-bold">Client</label>
+                    <input list="clientList" id="clientSelect" class="form-control" placeholder="Type to search..." required>
+                    <datalist id="clientList"></datalist>
+                </div>
+                <div class="col-md-3">
+                    <label class="small fw-bold">Project</label>
+                    <input list="projectList" id="projectSelect" class="form-control" placeholder="Type to search..." required>
+                    <datalist id="projectList"></datalist>
+                </div>
+                <div class="col-md-10"><input type="text" id="notes" class="form-control" placeholder="Notes..."></div>
+                <div class="col-md-2"><button type="submit" id="saveBtn" class="btn btn-dark w-100 py-2 fw-bold" style="background:var(--orange); border:none">SAVE LOG</button></div>
+            </form>
+        </div>
+
+        <!-- Calendar sync bar (staff + dept head — anyone logging their own time) -->
+        <div id="calSyncBar" class="sync-bar d-print-none d-flex justify-content-between align-items-center" style="display:none;">
+            <div>
+                <span class="fw-bold">📅 Pull your Google Calendar for this day</span>
+                <div class="small text-muted mt-1"><span class="sync-dot" id="syncDot"></span><span id="calSyncStatus">Not synced yet — tap Sync to fill the gaps automatically.</span></div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm fw-bold text-white" style="background:var(--calBlue)" onclick="syncCalendar()">SYNC CALENDAR</button>
+                <button class="btn btn-outline-dark btn-sm fw-bold" title="Refresh logs" onclick="manualRefresh()">🔄</button>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold m-0 text-muted">ACTIVITY HISTORY</h6>
+            <input type="date" id="overviewDate" class="form-control w-auto" onchange="onOverviewChange()">
+        </div>
+        <div id="userTableView">
+            <table class="table table-hover bg-white rounded shadow-sm overflow-hidden align-middle">
+                <thead>
+                    <tr>
+                        <th>Time Block</th>
+                        <th>Client</th>
+                        <th>Project Allocation</th>
+                        <th>Activity Summary Notes</th>
+                        <th class="text-center">Duration</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Team-wide view (super admin + department head — scoped by their department filter) -->
+    <div class="tab-pane fade" id="tab-teamoverview">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold m-0 text-muted">TEAM ACTIVITY</h6>
+            <input type="date" id="teamOverviewDate" class="form-control w-auto" onchange="renderTeamOverview()">
+        </div>
+        <div id="overviewFilters" class="row g-2 mb-3">
+            <div class="col-md-3"><select id="ovDeptFilter" class="form-select form-select-sm" onchange="renderTeamOverview()"><option value="ALL">All Departments</option></select></div>
+            <div class="col-md-3"><select id="ovEmpFilter" class="form-select form-select-sm" onchange="renderTeamOverview()"><option value="ALL">All Staff</option></select></div>
+            <div class="col-md-3"><select id="ovProjFilter" class="form-select form-select-sm" onchange="renderTeamOverview()"><option value="ALL">All Projects</option></select></div>
+        </div>
+        <div id="adminCardView" class="admin-grid"></div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-report">
+        <div class="row g-3 mb-4 row-cols-2 row-cols-md-5">
+            <div class="col"><div class="stat-card"><small class="fw-bold text-muted">AVG. DAILY HRS</small><div class="stat-val" id="goldAvg">0.00h</div></div></div>
+            <div class="col"><div class="stat-card"><small class="fw-bold text-muted">TOP CONTRIBUTOR</small><div class="stat-val" id="goldTop" style="font-size:1.1rem">-</div></div></div>
+            <div class="col"><div class="stat-card"><small class="fw-bold text-muted">TOTAL RECORDS</small><div class="stat-val" id="goldRecs">0</div></div></div>
+            <div class="col"><div class="stat-card"><small class="fw-bold text-muted">TOTAL HRS</small><div class="stat-val" id="goldTotal">0.00h</div></div></div>
+            <div class="col"><div class="stat-card"><small class="fw-bold text-muted">TOTAL COST</small><div class="stat-val" id="goldCost" style="font-size:1.1rem">-</div></div></div>
+        </div>
+        <div class="card p-3 mb-4 shadow-sm border-0">
+            <div class="row g-2">
+                <div class="col-md-2"><input type="date" id="repFrom" class="form-control"></div>
+                <div class="col-md-2"><input type="date" id="repTo" class="form-control"></div>
+                <div class="col-md-2"><select id="employeeFilter" class="form-select"></select></div>
+                <div class="col-md-2"><select id="projectFilter" class="form-select"></select></div>
+                <div class="col-md-2"><select id="departmentFilter" class="form-select"><option value="ALL">All Departments</option></select></div>
+                <div class="col-md-2"><button class="btn btn-dark w-100 fw-bold" onclick="runProjectInsights()">ANALYZE</button></div>
+            </div>
+        </div>
+        <div id="deptSummaryOutput" class="mb-3"></div>
+        <div class="card shadow-sm border-0" style="border-radius:12px; overflow:hidden;">
+            <table class="table table-hover bg-white align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Project</th>
+                        <th>Client</th>
+                        <th class="text-end">Hours</th>
+                        <th class="text-end">Cost</th>
+                        <th>Contributors</th>
+                    </tr>
+                </thead>
+                <tbody id="goldReportOutput"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-finance">
+        <div class="card p-4 shadow-sm border-0 mb-4">
+            <h6 class="fw-bold mb-3">RATE CONFIGURATION</h6>
+            <div class="row g-3 mb-4 border-bottom pb-4">
+                <div class="col-md-4"><label class="small fw-bold text-muted">GLOBAL CURRENCY</label><select id="currencySymbol" class="form-select"><option value="AED">AED</option><option value="INR">INR</option><option value="USD">USD</option></select></div>
+                <div class="col-md-2 d-flex align-items-end"><button class="btn btn-dark w-100 fw-bold" onclick="saveCurrency()">UPDATE</button></div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4"><label class="small fw-bold text-muted">STAFF NAME</label><input type="text" id="finName" class="form-control" placeholder="Full Name"></div>
+                <div class="col-md-4"><label class="small fw-bold text-muted">HOURLY RATE</label><input type="number" id="finRate" class="form-control" placeholder="0.00"></div>
+                <div class="col-md-4 d-flex align-items-end"><button class="btn btn-dark w-100 fw-bold" onclick="saveRate()">SAVE STAFF RATE</button></div>
+            </div>
+        </div>
+        <div id="rateList"></div>
+
+        <div class="card p-4 shadow-sm border-0 mt-4">
+            <h6 class="fw-bold mb-3">STAFF DEPARTMENTS</h6>
+            <div id="deptAssignList"></div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-costing">
+        <div class="card p-3 mb-3 shadow-sm border-0 d-print-none">
+            <div class="row g-2 mb-2">
+                <div class="col-md-3"><input type="date" id="costFrom" class="form-control" onchange="renderCosting()" placeholder="From"></div>
+                <div class="col-md-3"><input type="date" id="costTo" class="form-control" onchange="renderCosting()" placeholder="To"></div>
+                <div class="col-md-3"><button class="btn btn-outline-dark w-100 fw-bold" onclick="$('#costFrom,#costTo').val(''); renderCosting();">CLEAR PERIOD</button></div>
+            </div>
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <select id="costGroupBy" class="form-select" onchange="renderCosting()">
+                        <option value="project">Group by Project</option>
+                        <option value="department">Group by Department</option>
+                        <option value="staff">Group by Staff</option>
+                    </select>
+                </div>
+                <div class="col-md-3"><select id="costDeptFilter" class="form-select" onchange="renderCosting()"><option value="ALL">All Departments</option></select></div>
+                <div class="col-md-3"><select id="costStaffFilter" class="form-select" onchange="renderCosting()"><option value="ALL">All Staff</option></select></div>
+                <div class="col-md-3"><select id="costProjFilter" class="form-select" onchange="renderCosting()"><option value="ALL">All Projects</option></select></div>
+            </div>
+        </div>
+        <div id="costGrandTotalHeader"></div>
+        <div id="costingContainer" class="admin-grid"></div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-compliance">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h6 class="fw-bold m-0">TIMESHEET COMPLIANCE</h6>
+                <small class="text-muted" id="complianceMeta">Working days (Mon–Fri) since 18 Jun 2026, up to yesterday.</small>
+            </div>
+            <div class="d-flex gap-2 d-print-none flex-wrap justify-content-end">
+                <button class="btn btn-dark btn-sm fw-bold" onclick="runCompliance()">🔄 Refresh</button>
+                <button class="btn btn-outline-dark btn-sm fw-bold" onclick="downloadComplianceExcel()">⬇️ Excel</button>
+                <button class="btn btn-outline-dark btn-sm fw-bold" onclick="window.print()">🖨️ PDF</button>
+                <button class="btn btn-outline-primary btn-sm fw-bold superadmin-only" onclick="emailReportToAdmin(this)">✉️ Email me the report</button>
+                <button class="btn btn-outline-warning btn-sm fw-bold superadmin-only" onclick="sendNudgesNow(this)">🔔 Send nudges now</button>
+            </div>
+        </div>
+
+        <!-- Date / employee filter -->
+        <div class="card p-3 mb-3 shadow-sm border-0 d-print-none">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-2"><label class="small fw-bold text-muted d-block mb-1">FROM</label><input type="date" id="compFrom" class="form-control form-control-sm"></div>
+                <div class="col-md-2"><label class="small fw-bold text-muted d-block mb-1">TO</label><input type="date" id="compTo" class="form-control form-control-sm"></div>
+                <div class="col-md-3"><label class="small fw-bold text-muted d-block mb-1">EMPLOYEE</label><select id="compEmp" class="form-select form-select-sm"><option value="">All Staff</option></select></div>
+                <div class="col-md-3">
+                    <div class="btn-group btn-group-sm w-100 quick-range" role="group">
+                        <button class="btn btn-outline-secondary" onclick="setCompRange('thisweek')">This wk</button>
+                        <button class="btn btn-outline-secondary" onclick="setCompRange('lastweek')">Last wk</button>
+                        <button class="btn btn-outline-secondary" onclick="setCompRange('thismonth')">This mo</button>
+                        <button class="btn btn-outline-secondary" onclick="setCompRange('lastmonth')">Last mo</button>
+                    </div>
+                </div>
+                <div class="col-md-1"><button class="btn btn-dark btn-sm w-100 fw-bold" onclick="runCompliance()">APPLY</button></div>
+                <div class="col-md-1"><button class="btn btn-outline-dark btn-sm w-100 fw-bold" title="Reset to full period" onclick="$('#compFrom,#compTo').val(''); $('#compEmp').val(''); runCompliance();">ALL</button></div>
+            </div>
+            <div class="small text-muted mt-2">Leave the dates empty for the full period (since 18 Jun 2026). Today is never counted — only days up to yesterday.</div>
+        </div>
+
+        <!-- Mark leave (super admin + department head) -->
+        <div class="card p-3 mb-3 shadow-sm border-0 d-print-none" style="border-left:5px solid #6c757d !important;">
+            <h6 class="fw-bold mb-2">🌴 MARK LEAVE</h6>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3"><label class="small fw-bold text-muted d-block mb-1">EMPLOYEE</label><select id="lvEmp" class="form-select form-select-sm"><option value="">Select…</option></select></div>
+                <div class="col-md-2"><label class="small fw-bold text-muted d-block mb-1">FROM</label><input type="date" id="lvFrom" class="form-control form-control-sm"></div>
+                <div class="col-md-2"><label class="small fw-bold text-muted d-block mb-1">TO</label><input type="date" id="lvTo" class="form-control form-control-sm"></div>
+                <div class="col-md-2"><label class="small fw-bold text-muted d-block mb-1">TYPE</label><select id="lvType" class="form-select form-select-sm"><option value="full">Full day</option><option value="half">Half day (4h)</option></select></div>
+                <div class="col-md-2"><label class="small fw-bold text-muted d-block mb-1">NOTE</label><input type="text" id="lvNote" class="form-control form-control-sm" placeholder="e.g. Annual leave"></div>
+                <div class="col-md-1"><button class="btn btn-dark btn-sm w-100 fw-bold" onclick="saveLeaveFromForm(this)">SAVE</button></div>
+            </div>
+            <div class="small text-muted mt-2">Weekends are skipped automatically. Future dates are fine. Quick way: click a red <b>missing</b> date below to mark a full-day leave, or a yellow <b>short</b> date for a half-day.</div>
+        </div>
+
+        <!-- Schedule settings (saved to the sheet; the daily trigger reads these) -->
+        <div class="card p-3 mb-4 shadow-sm border-0 d-print-none superadmin-only">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="small fw-bold text-muted d-block mb-1">AUTO EMPLOYEE NUDGES</label>
+                    <select id="schedEnabled" class="form-select form-select-sm">
+                        <option value="off">Off</option>
+                        <option value="on">On</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="small fw-bold text-muted d-block mb-1">SEND HOUR (GST, 24h)</label>
+                    <select id="schedHour" class="form-select form-select-sm"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold text-muted d-block mb-1">SEND ON</label>
+                    <div id="schedDays" class="d-flex flex-wrap gap-2">
+                        <label class="small"><input type="checkbox" class="sched-day" value="1" checked> Mon</label>
+                        <label class="small"><input type="checkbox" class="sched-day" value="2" checked> Tue</label>
+                        <label class="small"><input type="checkbox" class="sched-day" value="3" checked> Wed</label>
+                        <label class="small"><input type="checkbox" class="sched-day" value="4" checked> Thu</label>
+                        <label class="small"><input type="checkbox" class="sched-day" value="5" checked> Fri</label>
+                        <label class="small"><input type="checkbox" class="sched-day" value="6"> Sat</label>
+                        <label class="small"><input type="checkbox" class="sched-day" value="0"> Sun</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-dark btn-sm w-100 fw-bold" onclick="saveSchedule(this)">SAVE SCHEDULE</button>
+                </div>
+            </div>
+            <div class="small text-muted mt-2" id="schedStatus"></div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3"><div class="stat-card"><small class="fw-bold text-muted">FULLY COMPLIANT</small><div class="stat-val" id="compClean">-</div></div></div>
+            <div class="col-md-3"><div class="stat-card"><small class="fw-bold text-muted">WITH MISSING DAYS</small><div class="stat-val" id="compMissing">-</div></div></div>
+            <div class="col-md-3"><div class="stat-card"><small class="fw-bold text-muted">WITH SHORTFALL</small><div class="stat-val" id="compShort">-</div></div></div>
+            <div class="col-md-3"><div class="stat-card"><small class="fw-bold text-muted">WORKING DAYS · LEAVE DAYS</small><div class="stat-val" id="compDays">-</div></div></div>
+        </div>
+        <div id="complianceOutput"></div>
+    </div>
+  </div>
+
+  <!-- Floating live timer widget (staff only) -->
+  <div id="timerFab" class="d-print-none" title="Live timer" onclick="toggleTimerWidget()" style="display:none;">⏱️</div>
+  <div id="timerWidget" class="d-print-none" style="display:none;">
+      <div class="tw-topbar">
+          <span id="twResetBtn" title="Reset">↺ Reset</span>
+          <span id="twPopBtn" title="Open in its own window (minimizes to your taskbar)">⇱ Pop out</span>
+          <span id="twCloseBtn" title="Close">✕</span>
+      </div>
+      <div class="tw-display" id="twDisplay">00:00:00</div>
+      <div class="tw-body">
+          <div class="tw-fields">
+          <div class="tw-autocomplete-wrap">
+              <input type="text" id="twClient" class="form-control form-control-sm mb-2" placeholder="Client" autocomplete="off">
+              <div class="tw-suggest" id="twClientSuggest"></div>
+          </div>
+          <div class="tw-autocomplete-wrap">
+              <input type="text" id="twProject" class="form-control form-control-sm mb-2" placeholder="Project" autocomplete="off">
+              <div class="tw-suggest" id="twProjectSuggest"></div>
+          </div>
+              <input type="text" id="twNotes" class="form-control form-control-sm" placeholder="Project description...">
+          </div>
+          <button id="twPlayBtn" class="tw-play" title="Start">▶</button>
+      </div>
+      <div class="tw-hint" id="twHint">Pick a client &amp; project, then press play. Seconds are tracked and saved exactly.</div>
+      <div id="twResizeHandle" title="Drag to resize">↙</div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+  // WRITE app (Execute as: Me) — handles login, sheet data and saves. Unchanged.
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxJQmmj6BYHnQli8Weo18diI4HLtLYPvj3FD-gV93Tpms4KffB5bS4YhUiLyzhOkU-j/exec";
+  // READ app (Execute as: User accessing the app) — serves each person's OWN calendar.
+  const CAL_APP_URL = "https://script.google.com/a/macros/liwa.tv/s/AKfycbx2Wfk50_okLgfB0pil23jzI34FKw2ANlxgviVof8_iZbG5CxDBYGDNIZCy1lN42jq6/exec";
+
+  let MASTER_DATA = { clients:[], projects:[], logs:[], finance:[], currency:"AED", calEvents:[], staff:[] };
+  // IS_ADMIN means "has admin-level read access" — true for both the real super admin AND a
+  // department head, since both see the same insight tabs (just scoped differently). Only
+  // IS_SUPERADMIN gates the truly management-only controls (Finance, staff/department
+  // assignment, schedule + email/nudge buttons, adding clients/projects).
+  const PENDING = {};   // rowId -> true while a save is still travelling to the sheet
+  let LOGGED_IN_USER = "", IS_ADMIN = false, IS_SUPERADMIN = false, IS_DEPTHEAD = false, MY_DEPARTMENT = "", lastAutoRefresh = 0, LAST_COMPLIANCE = null;
+
+  $(document).ready(function() {
+    // Primary calendar handoff: the bounced-back popup writes events to localStorage,
+    // which fires this 'storage' event in the main tab.
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'liwa_cal_payload' && e.newValue) {
+            try { handleCalendarPayload(JSON.parse(e.newValue)); } catch (err) {}
+        }
+    });
+
+    // Fallback handoff: direct postMessage (kept in case it works in some browsers).
+    window.addEventListener('message', function(ev) {
+        if (!ev.data || ev.data.source !== 'liwaCalendar') return;
+        if (ev.origin && ev.origin.indexOf('google') === -1) return;
+        handleCalendarPayload(ev.data);
+    });
+
+    // Silent background refresh of SHEET data when the user returns to the tab
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible' && LOGGED_IN_USER) {
+            const now = Date.now();
+            if (now - lastAutoRefresh > 20000) { lastAutoRefresh = now; refresh(); }
+        }
+    });
+
+    window.addEventListener('beforeunload', function(e) {
+        if (Object.keys(PENDING).length) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    const savedUser = localStorage.getItem('liwa_user');
+    if(savedUser) {
+        LOGGED_IN_USER = savedUser;
+        IS_SUPERADMIN = localStorage.getItem('liwa_admin') === 'true';
+        IS_DEPTHEAD = localStorage.getItem('liwa_depthead') === 'true';
+        MY_DEPARTMENT = localStorage.getItem('liwa_department') || "";
+        IS_ADMIN = IS_SUPERADMIN || IS_DEPTHEAD;
+        setupUI();
+    }
+  });
+
+  // Local (Dubai) date as yyyy-mm-dd. toISOString() is UTC and showed yesterday's date before 4 AM.
+  function localToday() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // Tiny non-blocking notice (replaces alert() for good news so nobody has to click OK).
+  function toast(msg, ms) {
+    const el = $(`<div class="app-toast">${msg}</div>`);
+    $("#toastBox").append(el);
+    setTimeout(() => el.fadeOut(300, () => el.remove()), ms || 2200);
+  }
+
+  function postJSON(obj) {
+    return fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify(obj) }).then(r => r.json());
+  }
+
+  function setupUI() {
+    $("#loginPage").hide(); $("#mainApp").show(); $("#userNameDisplay").text(LOGGED_IN_USER + (IS_DEPTHEAD ? ` (${MY_DEPARTMENT} Head)` : ""));
+    const today = localToday();
+    $("#date").val(today);
+    $("#overviewDate").val(today);
+    $("#teamOverviewDate").val(today);
+
+    if (!IS_ADMIN) {
+        // Regular staff: personal Tracker only, no team/insight tabs at all.
+        $(".admin-only").hide();
+        $("#calSyncBar").show();
+        initTimerWidget();
+    } else if (IS_DEPTHEAD) {
+        // Department head: BOTH logs their own time (Tracker) AND sees their team's insight
+        // tabs — so nothing here gets hidden the way it would for a plain staff member.
+        $("#tab1Title").text("My Timesheet");
+        $("#calSyncBar").show();
+        initTimerWidget();
+        if (!IS_SUPERADMIN) { $(".superadmin-only").hide(); }
+    } else {
+        // True super admin: no personal timesheet at all — team/insight tabs only.
+        $("#navTabLogItem").hide();
+        $("#calSyncBar").hide();
+        try {
+            const teamBtn = document.getElementById('navTeamOverviewBtn');
+            if (teamBtn) { new bootstrap.Tab(teamBtn).show(); }
+        } catch (e) {
+            // Never let a tab-activation hiccup block refresh() below — worst case the
+            // Tracker tab (now hidden) stays marked active until the admin clicks another tab.
+        }
+    }
+    refresh();
+  }
+
+  // Mirrors backend clockToHours(): "1.3025" (1h 30m 25s) -> true decimal hours.
+  // Old "1.30" (no seconds) still parses the same as before.
+  function clockToDecimal(clockStr) {
+    let val = parseFloat(clockStr) || 0;
+    let hrs = Math.floor(val);
+    let mmss = Math.round((val - hrs) * 10000);
+    if (mmss >= 10000) { hrs += 1; mmss -= 10000; }
+    const mmssStr = ('0000' + mmss).slice(-4);
+    let mins = parseInt(mmssStr.slice(0, 2), 10) || 0;
+    let secs = parseInt(mmssStr.slice(2, 4), 10) || 0;
+    return hrs + (mins / 60) + (secs / 3600);
+  }
+
+  // Readable duration for table display, e.g. "1h 30m", "45m 12s", "22s".
+  function fmtClockDisplay(clockStr) {
+    const dec = clockToDecimal(clockStr);
+    const totalSec = Math.round(dec * 3600);
+    const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
+    let parts = [];
+    if (h) parts.push(h + 'h');
+    if (m) parts.push(m + 'm');
+    if (s || parts.length === 0) parts.push(s + 's');
+    return parts.join(' ');
+  }
+
+  function handleLogin() {
+    const id = $("#userId").val(), p = $("#userPass").val();
+    const url = `${WEB_APP_URL}?action=login&userId=${encodeURIComponent(id)}&password=${encodeURIComponent(p)}&ts=${Date.now()}`;
+    fetch(url).then(r => r.json()).then(res => {
+        if(res.success) {
+            localStorage.setItem('liwa_user', res.fullName);
+            localStorage.setItem('liwa_admin', res.isAdmin);
+            localStorage.setItem('liwa_depthead', !!res.isDeptHead);
+            localStorage.setItem('liwa_department', res.department || "");
+            location.reload();
+        } else { $("#loginError").text("Invalid Credentials"); }
+    });
+  }
+
+  function handleLogout() { localStorage.clear(); location.reload(); }
+
+  function refresh() {
+    const activeDate = $("#overviewDate").val() || localToday();
+
+    fetch(`${WEB_APP_URL}?user=${encodeURIComponent(LOGGED_IN_USER)}&admin=${IS_ADMIN}&date=${activeDate}&ts=${Date.now()}`)
+    .then(r => r.json())
+    .then(data => {
+        const keepCal = MASTER_DATA.calEvents || [];   // preserve synced calendar across silent sheet refreshes
+        // Keep any rows still being saved in the background, so a refresh never "loses" them.
+        const pendingRows = (MASTER_DATA.logs || []).filter(r => PENDING[r[8]]);
+        MASTER_DATA = data;
+        pendingRows.forEach(p => {
+            MASTER_DATA.logs = MASTER_DATA.logs.filter(r => r[8] !== p[8]);
+            MASTER_DATA.logs.unshift(p);
+        });
+        MASTER_DATA.calEvents = keepCal;
+        MASTER_DATA.staff = data.staff || [];
+
+        $("#clientList").html(data.clients.map(c => `<option value="${c}">`).join(''));
+        $("#projectList").html(data.projects.map(p => `<option value="${p}">`).join(''));
+        updateWidgetAutocomplete(data.clients, data.projects);
+
+        renderHistory();
+        autoFillStartTime();
+        populateFilters();
+        if(IS_ADMIN) {
+            populateOverviewFilters(); populateCostFilters(); renderTeamOverview(); renderCosting(); populateComplianceStaff();
+            if (IS_SUPERADMIN) { renderFinance(); renderDeptAssignments(); }
+        }
+    });
+  }
+
+  // ---------- Calendar sync (popup + postMessage) ----------
+  let calSyncActiveId = null; // guards against a stale poll loop overwriting a newer sync attempt
+
+  function syncCalendar() {
+    if (IS_ADMIN && !IS_DEPTHEAD) return;
+    const d = $("#overviewDate").val() || localToday();
+    $("#calSyncStatus").text("Opening Google… approve access if asked.");
+    // Random per-attempt ID so the popup can hand its result to the WRITE deployment's
+    // cache, and this tab can retrieve it by polling — see backend serveCalendarBridge()
+    // for why this doesn't rely on window messaging (both alternatives are platform-blocked
+    // here: top-navigation by Apps Script's sandbox, postMessage by Google's COOP header).
+    const syncId = 'sync_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    calSyncActiveId = syncId;
+    const url = `${CAL_APP_URL}?action=calendar&date=${encodeURIComponent(d)}&syncId=${encodeURIComponent(syncId)}&ts=${Date.now()}`;
+    const popup = window.open(url, "liwaCal", "width=440,height=340");
+    if (!popup) {
+        $("#calSyncStatus").text("Popup blocked — allow popups for this site, then tap Sync again.");
+        return;
+    }
+    pollCalSync(syncId, 0);
+  }
+
+  function pollCalSync(syncId, attempt) {
+    if (calSyncActiveId !== syncId) return; // superseded by a newer sync attempt — drop this one
+    fetch(`${WEB_APP_URL}?action=getCalSync&syncId=${encodeURIComponent(syncId)}&ts=${Date.now()}`)
+    .then(r => r.json())
+    .then(res => {
+        if (calSyncActiveId !== syncId) return;
+        if (res && res.found) {
+            handleCalendarPayload({ source: 'liwaCalendar', date: res.date, events: res.events });
+        } else if (attempt < 20) { // ~20 tries at 1.5s apart ≈ 30s before giving up
+            setTimeout(() => pollCalSync(syncId, attempt + 1), 1500);
+        } else {
+            $("#calSyncStatus").text("No response after 30s — close the popup manually and try again, or check with your admin.");
+        }
+    })
+    .catch(() => {
+        if (calSyncActiveId !== syncId) return;
+        if (attempt < 20) setTimeout(() => pollCalSync(syncId, attempt + 1), 1500);
+        else $("#calSyncStatus").text("Could not reach the server to check sync status. Try again.");
+    });
+  }
+
+  function handleCalendarPayload(p) {
+    calSyncActiveId = null; // this sync attempt is resolved, whether via poll or a lucky postMessage
+    const cur = $("#overviewDate").val() || localToday();
+    if (p.date && p.date !== cur) return; // synced a day other than the one on screen — ignore
+    MASTER_DATA.calEvents = p.events || [];
+    const n = MASTER_DATA.calEvents.length;
+    $("#syncDot").addClass("on");
+    $("#calSyncStatus").text(n > 0 ? (n + " calendar event(s) loaded — tap ➕ to log them, or fill any ⏳ gaps below.")
+                                   : "No timed calendar events found for this day.");
+    renderHistory();
+  }
+
+  function manualRefresh() { refresh(); if (!IS_ADMIN || IS_DEPTHEAD) syncCalendar(); }
+
+  function onOverviewChange() {
+    // Different day now on screen → previous day's calendar no longer applies
+    MASTER_DATA.calEvents = [];
+    $("#syncDot").removeClass("on");
+    $("#calSyncStatus").text("Not synced yet — tap Sync to fill the gaps automatically.");
+    refresh();
+  }
+
+  function onDateSelectionChange() {
+     $("#overviewDate").val($("#date").val());
+     onOverviewChange();
+  }
+
+  function normalize(d) {
+      if (!d) return "";
+      let dateObj;
+      let dateStr = d.toString().trim();
+      if (dateStr.includes('/') && dateStr.split('/')[0].length <= 2) {
+          const p = dateStr.split('/');
+          dateObj = new Date(p[2], p[1] - 1, p[0]);
+      } else { dateObj = new Date(dateStr); }
+      if (isNaN(dateObj.getTime())) return "";
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+  }
+
+  // Start time = END time of the latest entry already logged for that day (locked).
+  function autoFillStartTime() {
+    if (IS_ADMIN && !IS_DEPTHEAD) return;
+    const selectedDate = $("#date").val();
+    if (!selectedDate) return;
+    const targetDate = normalize(selectedDate);
+    const myName = LOGGED_IN_USER.toString().toLowerCase().trim();
+    const dayLogs = MASTER_DATA.logs.filter(r => normalize(r[0]) === targetDate && r[7].toString().toLowerCase().trim() === myName);
+    let latestEnd = null;
+    dayLogs.forEach(r => { const e = toMin(r[2]); if (e !== null && (latestEnd === null || e > latestEnd)) latestEnd = e; });
+    if (latestEnd !== null) {
+      $("#startTime").val(minToHHMM(latestEnd)).prop("readonly", true);
+      $("#lockToggle").text("🔒").css("color", "var(--orange)");
+    } else {
+      $("#startTime").val("").prop("readonly", false);
+      $("#lockToggle").text("🔓").css("color", "gray");
+    }
+  }
+
+  // Wipe the form back to a clean "new entry" state after a save.
+  function resetEntryForm() {
+    $("#editRowIndex").val("");
+    $("#clientSelect").val(""); $("#projectSelect").val(""); $("#notes").val(""); $("#endTime").val("");
+    $("#saveBtn").text("SAVE LOG").css("background", "var(--orange)").prop('disabled', false);
+    autoFillStartTime();
+  }
+
+  // Same duration format the backend stores: "H.MMSS".
+  function calcDurationClock(start, end) {
+    const toS = t => { const p = (t || "").split(':'); if (p.length < 2) return null; return (+p[0]) * 3600 + (+p[1]) * 60 + (p[2] ? +p[2] : 0); };
+    let s = toS(start), e = toS(end);
+    if (s === null || e === null) return "0.0000";
+    let diff = e - s; if (diff < 0) diff += 86400;
+    const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), sec = diff % 60;
+    return h + "." + String(m).padStart(2, '0') + String(sec).padStart(2, '0');
+  }
+
+  // Overlap check done instantly in the browser (the server double-checks too).
+  function findLocalOverlap(date, start, end, ignoreId) {
+    const myName = LOGGED_IN_USER.toString().toLowerCase().trim();
+    const ns = toMin(start), ne = toMin(end);
+    if (ns === null || ne === null) return null;
+    return MASTER_DATA.logs.find(r => {
+        if (ignoreId && r[8] === ignoreId) return false;
+        if (r[7].toString().toLowerCase().trim() !== myName) return false;
+        if (normalize(r[0]) !== normalize(date)) return false;
+        const es = toMin(r[1]), ee = toMin(r[2]);
+        if (es === null || ee === null) return false;
+        return ns < ee && ne > es;
+    }) || null;
+  }
+
+  // OPTIMISTIC SAVE: the row appears instantly; the sheet is updated in the background.
+  // If the server rejects it, the row is removed again and the user is told exactly what wasn't saved.
+  function submitLogOptimistic(d) {
+    const isEdit = !!d.id;
+    const rowId = isEdit ? d.id : ('tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+    const newRow = [d.date, d.startTime, d.endTime, d.client, d.project, d.notes, calcDurationClock(d.startTime, d.endTime), d.user, rowId];
+    let backup = null, backupIdx = -1;
+    if (isEdit) {
+        backupIdx = MASTER_DATA.logs.findIndex(r => r[8] === d.id);
+        if (backupIdx > -1) { backup = MASTER_DATA.logs[backupIdx]; MASTER_DATA.logs[backupIdx] = newRow; }
+        else MASTER_DATA.logs.unshift(newRow);
+    } else {
+        MASTER_DATA.logs.unshift(newRow);
+    }
+    PENDING[rowId] = true;
+    renderHistory();
+    if (IS_ADMIN) renderTeamOverview();
+
+    postJSON({ action: "saveLog", data: d, user: d.user, isAdmin: IS_ADMIN })
+    .then(res => {
+        if (!res || res.error || res.success === false) throw new Error((res && res.error) || "Save failed");
+        delete PENDING[rowId];
+        if (res.id) newRow[8] = res.id;
+        if (res.duration) newRow[6] = res.duration;
+        renderHistory();
+        if (IS_ADMIN) renderTeamOverview();
+    })
+    .catch(err => {
+        delete PENDING[rowId];
+        const i = MASTER_DATA.logs.indexOf(newRow);
+        if (i > -1) {
+            if (backup) MASTER_DATA.logs[i] = backup; else MASTER_DATA.logs.splice(i, 1);
+        }
+        renderHistory(); autoFillStartTime();
+        if (IS_ADMIN) renderTeamOverview();
+        const msg = (err && err.message ? err.message : String(err)).replace(/^Error:\s*/, '');
+        alert(`NOT SAVED: ${msg}\n\n${d.date}  ${to12h(d.startTime)} - ${to12h(d.endTime)}\n${d.client} · ${d.project}\n\nPlease enter it again.`);
+    });
+  }
+
+  $("#trackerForm").on("submit", function(e) {
+    e.preventDefault();
+    const start = $("#startTime").val(), end = $("#endTime").val();
+    if (!start) { alert("Please enter a Start time."); return; }
+    if (toMin(start) >= toMin(end)) { alert("End time must be later than Start time."); return; }
+    const d = {
+        id: $("#editRowIndex").val(),
+        date: $("#date").val(),
+        startTime: start,
+        endTime: end,
+        client: $("#clientSelect").val().trim(),
+        project: $("#projectSelect").val().trim(),
+        notes: $("#notes").val(),
+        user: LOGGED_IN_USER
+    };
+    const clash = findLocalOverlap(d.date, d.startTime, d.endTime, d.id);
+    if (clash) { alert(`This overlaps '${clash[4]}' already logged from ${to12h(clash[1])} to ${to12h(clash[2])}.`); return; }
+
+    submitLogOptimistic(d);
+    resetEntryForm();                 // form wipes; Start = this entry's End time
+    $("#endTime").focus();
+    toast("✓ Saved");
+  });
+
+  function to12h(t) {
+    if(!t || !t.includes(':')) return t;
+    let [h, m] = t.split(':');
+    let s = h >= 12 ? " PM" : " AM";
+    h = h % 12 || 12;
+    return h + ":" + m + s;
+  }
+
+  // ---------- Gap detection ----------
+  // Parse "07:30", "7:30", or "7:30 AM" / "12:00 PM" into minutes since midnight. null if unparseable.
+  function toMin(t) {
+    if (t == null) return null;
+    let s = t.toString().trim().toUpperCase();
+    let ampm = null;
+    if (s.indexOf('AM') > -1) { ampm = 'AM'; s = s.replace('AM', '').trim(); }
+    else if (s.indexOf('PM') > -1) { ampm = 'PM'; s = s.replace('PM', '').trim(); }
+    if (s.indexOf(':') < 0) return null;
+    const p = s.split(':');
+    let h = parseInt(p[0], 10), m = parseInt(p[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return h * 60 + m;
+  }
+  function minToHHMM(m) { const h = Math.floor(m/60), mm = m%60; return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm; }
+  function fmtDur(mins) { const h = Math.floor(mins/60), m = mins%60; if(h && m) return h+'h'+m+'m'; if(h) return h+'h'; return m+'m'; }
+
+  // Gaps = time between logged/calendar blocks where nothing is recorded.
+  // Calendar events count as "covered" so we don't double-surface them (they show as ➕ suggestions instead).
+  function computeGaps(dayLogs, calEvents) {
+    let iv = [];
+    dayLogs.forEach(r => { const s = toMin(r[1]), e = toMin(r[2]); if(s != null && e != null && e > s) iv.push([s, e]); });
+    (calEvents || []).forEach(c => { const s = toMin(c.startTime), e = toMin(c.endTime); if(s != null && e != null && e > s) iv.push([s, e]); });
+    if (iv.length === 0) return [];
+    iv.sort((a, b) => a[0] - b[0]);
+    let merged = [iv[0].slice()];
+    for (let i = 1; i < iv.length; i++) {
+        const last = merged[merged.length - 1];
+        if (iv[i][0] <= last[1]) last[1] = Math.max(last[1], iv[i][1]);
+        else merged.push(iv[i].slice());
+    }
+    let gaps = [];
+    for (let j = 0; j < merged.length - 1; j++) {
+        const gs = merged[j][1], ge = merged[j + 1][0];
+        if (ge - gs >= 15) gaps.push([gs, ge]); // ignore sub-15-min slivers
+    }
+    return gaps;
+  }
+
+  function fillGap(start, end) {
+    $("#editRowIndex").val("");   // filling a gap is always a NEW entry
+    $("#date").val($("#overviewDate").val());
+    $("#startTime").val(start).prop("readonly", true);
+    $("#endTime").val(end);
+    $("#clientSelect").val(""); $("#projectSelect").val(""); $("#notes").val("");
+    $("#saveBtn").text("LOG THIS GAP").css("background", "var(--orange)");
+    $("#lockToggle").text("🔒");
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  // Always the logged-in person's OWN timesheet — used by staff and by a department head
+  // (who also logs their own time). Team-wide data lives in renderTeamOverview() instead.
+  function renderHistory() {
+    const selDate = $("#overviewDate").val();
+    let totalDecimal = 0;
+    const myName = LOGGED_IN_USER.toString().toLowerCase().trim();
+    const myLogs = MASTER_DATA.logs.filter(r => r[7].toString().toLowerCase().trim() === myName);
+    let filteredLogs = selDate ? myLogs.filter(r => normalize(r[0]) === normalize(selDate)) : myLogs;
+
+    filteredLogs.sort((a, b) => (toMin(b[1]) || 0) - (toMin(a[1]) || 0));
+
+    let html = "";
+
+    // 1) Saved timesheet rows
+    if (filteredLogs.length > 0) {
+        filteredLogs.forEach((r) => {
+            totalDecimal += clockToDecimal(r[6]);
+            const pending = !!PENDING[r[8]];
+            html += `<tr${pending ? ' style="opacity:0.65"' : ''}>
+                <td><span class="btn-edit" onclick="loadForEditById('${r[8]}')">✏️</span><span class="btn-edit" style="color:#d9534f" onclick="deleteLogById('${r[8]}')">🗑️</span> ${to12h(r[1])} - ${to12h(r[2])}</td>
+                <td class="text-muted small fw-bold">${r[3]}</td>
+                <td><b>${r[4]}</b></td>
+                <td>${r[5]}</td>
+                <td class="text-center fw-bold" style="color:var(--orange)">${fmtClockDisplay(r[6])}${pending ? '<span class="sync-pending">⟳ saving…</span>' : ''}</td>
+            </tr>`;
+        });
+    }
+
+    // 2) Google Calendar suggestions (tap ➕ to log) — from the user's own calendar
+    if (MASTER_DATA.calEvents && MASTER_DATA.calEvents.length > 0) {
+        let hasSuggestions = false;
+        let suggestionHtml = `<tr class="table-light d-print-none"><td colspan="5" class="small fw-bold text-muted pt-3 pb-2">📅 GOOGLE CALENDAR SUGGESTIONS (Tap ➕ to log)</td></tr>`;
+        MASTER_DATA.calEvents.forEach((cal, idx) => {
+            // Hide this suggestion if a saved log already overlaps it (already logged).
+            const cs = toMin(cal.startTime), ce = toMin(cal.endTime);
+            const isOverlapping = filteredLogs.some(r => {
+                const rs = toMin(r[1]), re = toMin(r[2]);
+                if (rs === null || re === null || cs === null || ce === null) return false;
+                return cs < re && ce > rs;
+            });
+            if (isOverlapping) return;
+            hasSuggestions = true;
+            suggestionHtml += `<tr class="d-print-none" style="background: #f4f7fe; border-left: 4px solid var(--calBlue);">
+                <td><span class="btn-edit" style="color:var(--calBlue);" onclick="quickImportCalendar(${idx})">➕</span> ${to12h(cal.startTime)} - ${to12h(cal.endTime)}</td>
+                <td colspan="2"><span class="badge bg-primary me-2">Calendar Event</span> <b class="text-dark">${cal.title}</b></td>
+                <td class="text-muted small italic">Click ➕ to assign Client & Project</td>
+                <td class="text-center fw-bold text-primary">${cal.duration}h</td>
+            </tr>`;
+        });
+        if(hasSuggestions) html += suggestionHtml;
+    }
+
+    // 3) Untracked gaps (tap ➕ to log) — only meaningful for a single chosen day
+    if (selDate) {
+        const gaps = computeGaps(filteredLogs, MASTER_DATA.calEvents);
+        if (gaps.length > 0) {
+            html += `<tr class="d-print-none"><td colspan="5" class="small fw-bold text-muted pt-3 pb-2">⏳ UNTRACKED GAPS (Tap ➕ to log later)</td></tr>`;
+            gaps.forEach(g => {
+                const s = minToHHMM(g[0]), e = minToHHMM(g[1]);
+                html += `<tr class="d-print-none" style="background:#fff8f0; border-left:4px solid var(--orange);">
+                    <td><span class="btn-edit" style="color:var(--orange)" onclick="fillGap('${s}','${e}')">➕</span> ${to12h(s)} - ${to12h(e)}</td>
+                    <td colspan="2"><span class="badge me-2" style="background:var(--orange)">Untracked</span> <span class="text-muted">Nothing logged here</span></td>
+                    <td class="text-muted small">Tap ➕ to assign Client &amp; Project</td>
+                    <td class="text-center fw-bold" style="color:var(--orange)">${fmtDur(g[1]-g[0])}</td>
+                </tr>`;
+            });
+        }
+    }
+
+    if (filteredLogs.length === 0 && (!MASTER_DATA.calEvents || MASTER_DATA.calEvents.length === 0)) {
+        $("#tableBody").html('<tr><td colspan="5" class="text-center p-5 text-muted">No sheet activity yet. Tap <b>Sync Calendar</b> to pull today\'s events.</td></tr>');
+    } else {
+        $("#tableBody").html(html);
+    }
+    $("#statTotalHours").text(totalDecimal.toFixed(2) + "h");
+  }
+
+  // Team-wide grid — super admin sees everyone, a department head sees their department
+  // (their filter is locked). Independent date + filters from the personal timesheet above.
+  function renderTeamOverview() {
+    if (!IS_ADMIN) return;
+    const selDate = $("#teamOverviewDate").val();
+    let filteredLogs = selDate ? MASTER_DATA.logs.filter(r => normalize(r[0]) === normalize(selDate)) : MASTER_DATA.logs;
+
+    const deptSel = $("#ovDeptFilter").val() || "ALL";
+    const empSel = $("#ovEmpFilter").val() || "ALL";
+    const projSel = $("#ovProjFilter").val() || "ALL";
+    const teamLogs = filteredLogs.filter(r => {
+        const empM = (empSel === "ALL" || r[7].toLowerCase().trim() === empSel.toLowerCase().trim());
+        const projM = (projSel === "ALL" || r[4].toLowerCase().trim() === projSel.toLowerCase().trim());
+        let deptM = true;
+        if (deptSel !== "ALL") {
+            const d = departmentOf(r[7]);
+            deptM = (deptSel === "UNASSIGNED") ? !d : (d.toLowerCase().trim() === deptSel.toLowerCase().trim());
+        }
+        return empM && projM && deptM;
+    });
+
+    let summary = {};
+    teamLogs.forEach(r => {
+        if(!summary[r[4]]) summary[r[4]] = { client:r[3], total:0, users:{} };
+        summary[r[4]].total += clockToDecimal(r[6]);
+        summary[r[4]].users[r[7]] = (summary[r[4]].users[r[7]] || 0) + clockToDecimal(r[6]);
+    });
+    let html = "";
+    for(let p in summary) {
+        let pills = Object.entries(summary[p].users).map(([u,h]) => `<span class="user-pill">${u}: <b>${h.toFixed(2)}h</b></span>`).join('');
+        html += `<div class="analysis-card"><div class="d-flex justify-content-between"><div><small class="text-muted fw-bold">${summary[p].client}</small><h5 class="m-0 fw-bold">${p}</h5></div><div class="stat-val">${summary[p].total.toFixed(2)}h</div></div><div class="mt-2">${pills}</div></div>`;
+    }
+    $("#adminCardView").html(html || "<div class='text-center p-5 opacity-50'>No activity found</div>");
+  }
+
+  function quickImportCalendar(idx) {
+    const calItem = MASTER_DATA.calEvents[idx];
+    if (!calItem) return;
+    $("#editRowIndex").val("");   // calendar import is always a NEW entry
+    $("#startTime").val(calItem.startTime).prop("readonly", true);
+    $("#endTime").val(calItem.endTime);
+    $("#notes").val(`Google Cal: ${calItem.title}`);
+    $("#clientSelect").val(""); $("#projectSelect").val("");
+    $("#saveBtn").text("SAVE CALENDAR LOG").css("background", "var(--calBlue)");
+    $("#lockToggle").text("🔒");
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  function loadForEditById(id) {
+    if (PENDING[id]) { toast("Still saving that entry — try again in a second."); return; }
+    const data = MASTER_DATA.logs.find(r => r[8] === id);
+    if (!data) return;
+    if (!id) { alert("This entry has no ID yet — reload the page once and try again."); return; }
+    $("#editRowIndex").val(id);
+    $("#date").val(normalize(data[0]));
+    $("#startTime").val(data[1]).prop("readonly", true);
+    $("#endTime").val(data[2]);
+    $("#clientSelect").val(data[3]);
+    $("#projectSelect").val(data[4]);
+    $("#notes").val(data[5]);
+    $("#saveBtn").text("UPDATE LOG").css("background", "black");
+    $("#lockToggle").text("🔒");
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  // Optimistic delete: row disappears instantly, comes back if the server refuses.
+  function deleteLogById(id) {
+    if (PENDING[id]) { toast("Still saving that entry — try again in a second."); return; }
+    const idx = MASTER_DATA.logs.findIndex(r => r[8] === id);
+    if (idx < 0) return;
+    const row = MASTER_DATA.logs[idx];
+    if (!id) { alert("This entry has no ID yet — reload the page once and try again."); return; }
+    if (!confirm(`Delete this entry?\n\n${to12h(row[1])} - ${to12h(row[2])}  •  ${row[4]}\n\nThis cannot be undone.`)) return;
+
+    MASTER_DATA.logs.splice(idx, 1);
+    renderHistory(); autoFillStartTime();
+    if (IS_ADMIN) renderTeamOverview();
+
+    postJSON({ action: "deleteLog", id: id, user: LOGGED_IN_USER, isAdmin: IS_ADMIN })
+    .then(res => { if (!res || res.error || res.success === false) throw new Error((res && res.error) || "Delete failed"); toast("🗑️ Deleted"); })
+    .catch(err => {
+        MASTER_DATA.logs.splice(Math.min(idx, MASTER_DATA.logs.length), 0, row);
+        renderHistory(); autoFillStartTime();
+        if (IS_ADMIN) renderTeamOverview();
+        alert("Could not delete: " + (err && err.message ? err.message : err));
+    });
+  }
+
+  function runProjectInsights() {
+    const fromVal = $("#repFrom").val(), toVal = $("#repTo").val();
+    const emp = $("#employeeFilter").val(), proj = $("#projectFilter").val();
+    const dept = $("#departmentFilter").val() || "ALL";
+    const getTS = (v) => { let d = new Date(normalize(v)); return isNaN(d.getTime()) ? null : d.getTime(); };
+    const fromTS = getTS(fromVal), toTS = getTS(toVal);
+    let filtered = MASTER_DATA.logs.filter(r => {
+        const rowTS = getTS(r[0]);
+        if (!rowTS) return false;
+        const inDate = (!fromTS || rowTS >= fromTS) && (!toTS || rowTS <= toTS);
+        const userM = (emp === "ALL" || !emp || r[7].toLowerCase().trim() === emp.toLowerCase().trim());
+        const projM = (proj === "ALL" || !proj || r[4].toLowerCase().trim() === proj.toLowerCase().trim());
+        let deptM = true;
+        if (dept !== "ALL") {
+            const d = departmentOf(r[7]);
+            deptM = (dept === "UNASSIGNED") ? !d : (d.toLowerCase().trim() === dept.toLowerCase().trim());
+        }
+        return inDate && userM && projM && deptM;
+    });
+
+    const rates = {}; MASTER_DATA.finance.forEach(f => rates[f[0].toLowerCase()] = parseFloat(f[1] || 0));
+    const currency = MASTER_DATA.currency;
+
+    let totalHrs = 0, totalCost = 0, projMap = {}, deptMap = {}, userTotals = {}, days = new Set();
+    filtered.forEach(r => {
+        let h = clockToDecimal(r[6]); totalHrs += h; days.add(normalize(r[0]));
+        let user = r[7].trim(), pName = r[4].trim();
+        const rate = rates[user.toLowerCase()] || 0, cost = h * rate;
+        totalCost += cost;
+
+        if (!projMap[pName]) projMap[pName] = { client: r[3], hrs: 0, cost: 0, users: {} };
+        projMap[pName].hrs += h;
+        projMap[pName].cost += cost;
+        if (!projMap[pName].users[user]) projMap[pName].users[user] = { hrs: 0, cost: 0 };
+        projMap[pName].users[user].hrs += h;
+        projMap[pName].users[user].cost += cost;
+
+        const d = departmentOf(user) || "Unassigned";
+        deptMap[d] = (deptMap[d] || 0) + h;
+        userTotals[user] = (userTotals[user] || 0) + h;
+    });
+
+    $("#goldAvg").text((totalHrs / (days.size || 1)).toFixed(2) + "h");
+    $("#goldRecs").text(filtered.length);
+    $("#goldTotal").text(totalHrs.toFixed(2) + "h");
+    $("#goldCost").text(totalCost > 0 ? (currency + " " + totalCost.toFixed(2)) : "-");
+
+    const topUser = Object.entries(userTotals).sort((a, b) => b[1] - a[1])[0];
+    $("#goldTop").text(topUser ? `${topUser[0]} (${topUser[1].toFixed(1)}h)` : "-");
+
+    // Department rollup — only worth showing when the view spans more than one department.
+    let deptHtml = "";
+    const deptNames = Object.keys(deptMap);
+    if (deptNames.length > 1 || (deptNames.length === 1 && dept === "ALL" && deptNames[0] !== "Unassigned")) {
+        deptHtml = '<div class="row g-3">' + deptNames.sort().map(d => {
+            const pct = totalHrs > 0 ? ((deptMap[d] / totalHrs) * 100).toFixed(0) : 0;
+            return `<div class="col-md-${Math.max(3, Math.floor(12/deptNames.length))}"><div class="stat-card"><small class="fw-bold text-muted">${d.toUpperCase()}</small><div class="stat-val">${deptMap[d].toFixed(2)}h</div><div class="small text-muted">${pct}% of total</div></div></div>`;
+        }).join('') + '</div>';
+    }
+    $("#deptSummaryOutput").html(deptHtml);
+
+    let html = "";
+    Object.entries(projMap).sort((a, b) => b[1].hrs - a[1].hrs).forEach(([p, data]) => {
+        const contributors = Object.entries(data.users).sort((a, b) => b[1].hrs - a[1].hrs);
+        const pills = contributors.map(([u, v]) => `<span class="user-pill">${u}: <b>${v.hrs.toFixed(2)}h</b>${v.cost > 0 ? ` · ${currency} ${v.cost.toFixed(2)}` : ''}</span>`).join('');
+        html += `<tr>
+            <td class="fw-bold">${p}</td>
+            <td class="text-muted small">${data.client}</td>
+            <td class="text-end fw-bold" style="color:var(--orange)">${data.hrs.toFixed(2)}h</td>
+            <td class="text-end fw-bold text-success">${data.cost > 0 ? currency + ' ' + data.cost.toFixed(2) : '-'}</td>
+            <td><details><summary class="small text-muted" style="cursor:pointer">${contributors.length} contributor${contributors.length !== 1 ? 's' : ''}</summary><div class="mt-1">${pills}</div></details></td>
+        </tr>`;
+    });
+    $("#goldReportOutput").html(html || "<tr><td colspan='5' class='text-center p-5 opacity-50'>No data found.</td></tr>");
+  }
+
+
+  function renderFinance() {
+      $("#rateList").html(MASTER_DATA.finance.map(f => `<div class="cost-row"><span>${f[0]}</span><b>${MASTER_DATA.currency} ${parseFloat(f[1]||0).toFixed(2)}/hr</b></div>`).join(''));
+      $("#currencySymbol").val(MASTER_DATA.currency);
+  }
+
+  const KNOWN_DEPARTMENTS = ["Finance", "Creative"]; // shown as quick-pick options; admin can still type a custom one
+
+  function renderDeptAssignments() {
+      const staff = MASTER_DATA.staff || [];
+      if (staff.length === 0) { $("#deptAssignList").html("<div class='text-muted small p-2'>No staff found in the Users sheet.</div>"); return; }
+      const allDepts = [...new Set([...KNOWN_DEPARTMENTS, ...staff.map(s => s.department).filter(Boolean)])];
+      let html = "";
+      staff.forEach((s, i) => {
+          const opts = ['<option value="">— Unassigned —</option>']
+              .concat(allDepts.map(d => `<option value="${d}" ${s.department === d ? 'selected' : ''}>${d}</option>`))
+              .join('');
+          html += `<div class="cost-row">
+              <span>${s.name}${s.email ? ` <small class="text-muted">(${s.email})</small>` : ''}</span>
+              <span class="d-flex align-items-center gap-2">
+                  <select class="form-select form-select-sm" style="width:auto" id="deptSel_${i}">${opts}</select>
+                  <button class="btn btn-dark btn-sm fw-bold" onclick="saveDepartmentAssignment(${i})">SAVE</button>
+              </span>
+          </div>`;
+      });
+      $("#deptAssignList").html(html);
+  }
+
+  function saveDepartmentAssignment(i) {
+      const s = (MASTER_DATA.staff || [])[i];
+      if (!s) return;
+      const department = $(`#deptSel_${i}`).val();
+      fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "saveDepartment", name: s.name, department: department, isAdmin: true }) })
+      .then(r => r.json())
+      .then(res => {
+          if (res.error) { alert(res.error); return; }
+          refresh();
+      })
+      .catch(() => alert("Could not save department."));
+  }
+
+  function renderCosting() {
+    const groupBy = $("#costGroupBy").val() || "project";
+    const deptSel = $("#costDeptFilter").val() || "ALL";
+    const staffSel = $("#costStaffFilter").val() || "ALL";
+    const projSel = $("#costProjFilter").val() || "ALL";
+    const fromVal = $("#costFrom").val(), toVal = $("#costTo").val();
+    const getTS = (v) => { let d = new Date(normalize(v)); return isNaN(d.getTime()) ? null : d.getTime(); };
+    const fromTS = getTS(fromVal), toTS = getTS(toVal);
+    const rates = {}; MASTER_DATA.finance.forEach(f => rates[f[0].toLowerCase()] = parseFloat(f[1] || 0));
+
+    const rows = MASTER_DATA.logs.filter(r => {
+        const user = r[7], proj = r[4];
+        if (staffSel !== "ALL" && user.toLowerCase().trim() !== staffSel.toLowerCase().trim()) return false;
+        if (projSel !== "ALL" && proj.toLowerCase().trim() !== projSel.toLowerCase().trim()) return false;
+        if (deptSel !== "ALL") {
+            const d = departmentOf(user);
+            const match = (deptSel === "UNASSIGNED") ? !d : (d.toLowerCase().trim() === deptSel.toLowerCase().trim());
+            if (!match) return false;
+        }
+        if (fromTS || toTS) {
+            const rowTS = getTS(r[0]);
+            if (!rowTS) return false;
+            if (fromTS && rowTS < fromTS) return false;
+            if (toTS && rowTS > toTS) return false;
+        }
+        return true;
+    });
+
+    let summary = {}, grandTotal = 0;
+    rows.forEach(r => {
+        const proj = r[4], client = r[3], user = r[7], hrs = clockToDecimal(r[6]);
+        const rate = rates[user.toLowerCase()] || 0, cost = hrs * rate;
+        grandTotal += cost;
+
+        let key, label, subLabel;
+        if (groupBy === "department") { key = departmentOf(user) || "Unassigned"; label = key; subLabel = ""; }
+        else if (groupBy === "staff") { key = user; label = user; subLabel = departmentOf(user) || "Unassigned"; }
+        else { key = proj; label = proj; subLabel = client; }
+
+        if (!summary[key]) summary[key] = { label, subLabel, total: 0, rows: [] };
+        summary[key].total += cost;
+
+        // The breakdown line depends on the grouping: a project card breaks down by staff;
+        // department/staff cards break down by project, so you can see where the cost sits.
+        const breakdownLabel = (groupBy === "project") ? user : proj;
+        let existing = summary[key].rows.find(b => b.label === breakdownLabel);
+        if (!existing) { existing = { label: breakdownLabel, hrs: 0, cost: 0 }; summary[key].rows.push(existing); }
+        existing.hrs += hrs; existing.cost += cost;
+    });
+
+    let totalHeaderHtml = grandTotal > 0 ? `<div class="d-flex justify-content-between align-items-center mb-4"><button class="btn btn-dark fw-bold d-print-none" onclick="window.print()">📥 DOWNLOAD PDF</button><div class="card px-4 py-2 bg-dark text-white text-end shadow-sm"><h3>${MASTER_DATA.currency} ${grandTotal.toFixed(2)}</h3></div></div>` : "";
+    $("#costGrandTotalHeader").html(totalHeaderHtml);
+
+    let html = "";
+    Object.values(summary).sort((a, b) => b.total - a.total).forEach(group => {
+        let rowHtml = group.rows.sort((a, b) => b.cost - a.cost).map(b => `<div class="cost-row"><span>${b.label} (${b.hrs.toFixed(2)}h)</span><span class="fw-bold">${MASTER_DATA.currency} ${b.cost.toFixed(2)}</span></div>`).join('');
+        html += `<div class="analysis-card"><h6>${group.subLabel ? group.subLabel + ' - ' : ''}<b>${group.label}</b></h6><div class="text-end text-success fw-bold">${MASTER_DATA.currency} ${group.total.toFixed(2)}</div><hr>${rowHtml}</div>`;
+    });
+    $("#costingContainer").html(html || "<div class='text-center p-5 opacity-50'>No data found.</div>");
+  }
+
+  // Populates the three Cost Breakdown filter dropdowns.
+  // For a department head, the department filter is pinned to their own department and
+  // disabled — so "insight of their department" is what it says, not a suggestion.
+  function lockDeptFilterIfNeeded(selector) {
+    if (IS_DEPTHEAD && MY_DEPARTMENT) { $(selector).val(MY_DEPARTMENT).prop('disabled', true); }
+  }
+
+  function populateCostFilters() {
+    const scoped = scopeLogsToDeptIfNeeded(MASTER_DATA.logs);
+    const users = [...new Set(scoped.map(r => r[7].toString().trim()))].sort();
+    const projs = [...new Set(scoped.map(r => r[4].toString().trim()))].sort();
+    $("#costStaffFilter").html('<option value="ALL">All Staff</option>' + users.map(u => `<option value="${u}">${u}</option>`).join(''));
+    $("#costProjFilter").html('<option value="ALL">All Projects</option>' + projs.map(p => `<option value="${p}">${p}</option>`).join(''));
+    $("#costDeptFilter").html(getDepartmentOptionsHtml());
+    lockDeptFilterIfNeeded("#costDeptFilter");
+  }
+
+  // Employee dropdowns for the compliance filter + leave form. A department head only sees their team.
+  function populateComplianceStaff() {
+    let staff = (MASTER_DATA.staff || []).slice();
+    if (IS_DEPTHEAD && MY_DEPARTMENT) {
+        const md = MY_DEPARTMENT.toLowerCase().trim();
+        staff = staff.filter(s => (s.department || "").toLowerCase().trim() === md);
+    }
+    const names = staff.map(s => s.name).sort();
+    const keepC = $("#compEmp").val(), keepL = $("#lvEmp").val();
+    $("#compEmp").html('<option value="">All Staff</option>' + names.map(n => `<option value="${n}">${n}</option>`).join(''));
+    $("#lvEmp").html('<option value="">Select…</option>' + names.map(n => `<option value="${n}">${n}</option>`).join(''));
+    if (keepC) $("#compEmp").val(keepC);
+    if (keepL) $("#lvEmp").val(keepL);
+  }
+
+  function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+  function setCompRange(kind) {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const dow = (now.getDay() + 6) % 7; // Monday = 0
+    let from, to;
+    if (kind === 'thisweek') { from = new Date(now); from.setDate(now.getDate() - dow); to = new Date(now); }
+    else if (kind === 'lastweek') { to = new Date(now); to.setDate(now.getDate() - dow - 1); from = new Date(to); from.setDate(to.getDate() - 6); }
+    else if (kind === 'thismonth') { from = new Date(now.getFullYear(), now.getMonth(), 1); to = new Date(now); }
+    else if (kind === 'lastmonth') { from = new Date(now.getFullYear(), now.getMonth() - 1, 1); to = new Date(now.getFullYear(), now.getMonth(), 0); }
+    $("#compFrom").val(ymd(from)); $("#compTo").val(ymd(to));
+    runCompliance();
+  }
+
+  function complianceQuery() {
+    let q = "";
+    if (IS_DEPTHEAD && MY_DEPARTMENT) q += `&department=${encodeURIComponent(MY_DEPARTMENT)}`;
+    if ($("#compFrom").val()) q += `&from=${$("#compFrom").val()}`;
+    if ($("#compTo").val()) q += `&to=${$("#compTo").val()}`;
+    if ($("#compEmp").val()) q += `&employee=${encodeURIComponent($("#compEmp").val())}`;
+    return q;
+  }
+
+  function runCompliance() {
+    if (!IS_ADMIN) return;
+    populateComplianceStaff();
+    $("#complianceOutput").html("<div class='text-center p-4 text-muted'>Loading…</div>");
+    fetch(`${WEB_APP_URL}?action=compliance&ts=${Date.now()}${complianceQuery()}`)
+    .then(r => r.json())
+    .then(res => {
+        if (res.error) { $("#complianceOutput").html(`<div class='text-danger p-3'>${res.error}</div>`); return; }
+        LAST_COMPLIANCE = res;
+        if (res.schedule) applyScheduleToUI(res.schedule);
+        const fmtDate = (s) => { const p = s.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
+
+        let clean = 0, withMissing = 0, withShort = 0, leaveDays = 0;
+        res.report.forEach(u => {
+            if (u.missingCount === 0 && u.shortfallCount === 0) clean++;
+            if (u.missingCount > 0) withMissing++;
+            if (u.shortfallCount > 0) withShort++;
+            leaveDays += (u.leaveCount || 0);
+        });
+        $("#compClean").text(clean);
+        $("#compMissing").text(withMissing);
+        $("#compShort").text(withShort);
+        $("#compDays").text(res.workingDayCount + " · " + leaveDays);
+        $("#complianceMeta").text(res.workingDayCount
+            ? `Working days (Mon–Fri) ${fmtDate(res.start)} → ${fmtDate(res.end || res.generatedFor)} — ${res.workingDayCount} days, ${res.requiredHours}h/day required (4h on a half-day leave).`
+            : `No completed working days in the selected range (today is never counted).`);
+
+        let html = "";
+        res.report.forEach(u => {
+            const ok = (u.missingCount === 0 && u.shortfallCount === 0);
+            const safe = u.name.replace(/'/g, "\\'");
+            const lvBadge = u.leaveCount ? `<span class="badge bg-secondary ms-1">${u.leaveCount} leave</span>` : '';
+            const badge = ok
+                ? `<span class="badge bg-success">All caught up</span>${lvBadge}`
+                : `<span class="badge me-1" style="background:var(--orange)">${u.missingCount} missing</span><span class="badge bg-warning text-dark">${u.shortfallCount} short</span>${lvBadge}`;
+
+            const missingPills = u.missing.map(d => `<span class="user-pill pill-click" style="color:#b02a37" title="Click to mark FULL-DAY leave" onclick="quickLeave('${safe}','${d}','full')">${fmtDate(d)} 🌴</span>`).join('');
+            const shortPills = u.shortfall.map(s => `<span class="user-pill pill-click" style="color:#856404" title="Click to mark HALF-DAY leave" onclick="quickLeave('${safe}','${s.date}','half')">${fmtDate(s.date)}: <b>${s.hours.toFixed(2)}h</b>${s.required && s.required < res.requiredHours ? ' / ' + s.required + 'h' : ''}</span>`).join('');
+            const leavePills = (u.leave || []).map(l => `<span class="user-pill leave-pill" title="${(l.note || '').replace(/"/g, '&quot;')}">🌴 ${fmtDate(l.date)}${l.type === 'half' ? ' (½ day)' : ''}<span class="lv-x d-print-none" title="Remove leave" onclick="removeLeave('${safe}','${l.date}')">✕</span></span>`).join('');
+
+            html += `<div class="analysis-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="m-0 fw-bold">${u.name}${u.email ? ` <small class="text-muted fw-normal">(${u.email})</small>` : ` <small class="text-danger fw-normal">(no email on file)</small>`}</h5>
+                    <div>${badge}</div>
+                </div>
+                ${u.missingCount > 0 ? `<div class="mt-3"><small class="fw-bold text-muted d-block mb-1">MISSING DAYS (0 entries) <span class="fw-normal d-print-none">— click a date to mark leave</span></small>${missingPills}</div>` : ''}
+                ${u.shortfallCount > 0 ? `<div class="mt-3"><small class="fw-bold text-muted d-block mb-1">SHORTFALL <span class="fw-normal d-print-none">— click a date to mark half-day leave</span></small>${shortPills}</div>` : ''}
+                ${leavePills ? `<div class="mt-3"><small class="fw-bold text-muted d-block mb-1">ON LEAVE</small>${leavePills}</div>` : ''}
+                ${ok ? `<div class="mt-2 text-success small">No missing or short days in this period.</div>` : ''}
+            </div>`;
+        });
+        $("#complianceOutput").html(html || "<div class='text-center p-5 opacity-50'>No staff found.</div>");
+    });
+  }
+
+  // ---- Leave ----
+  function sendLeave(payload) {
+    return postJSON(Object.assign({ requester: LOGGED_IN_USER, isAdmin: IS_ADMIN }, payload))
+      .then(res => { if (!res || res.error || res.success === false) throw new Error((res && res.error) || "Failed"); return res; });
+  }
+
+  function saveLeaveFromForm(btn) {
+    const name = $("#lvEmp").val(), from = $("#lvFrom").val(), to = $("#lvTo").val() || $("#lvFrom").val();
+    if (!name) { alert("Pick an employee."); return; }
+    if (!from) { alert("Pick the leave date (From)."); return; }
+    if (to < from) { alert("'To' date is before 'From' date."); return; }
+    $(btn).prop('disabled', true).text("…");
+    sendLeave({ action: "saveLeave", name: name, from: from, to: to, type: $("#lvType").val(), note: $("#lvNote").val() })
+    .then(res => {
+        toast(`🌴 Leave saved for ${name} (${res.added + res.updated} day${res.added + res.updated !== 1 ? 's' : ''})`, 2800);
+        $("#lvFrom,#lvTo,#lvNote").val("");
+        runCompliance();
+    })
+    .catch(err => alert("Could not save leave: " + err.message.replace(/^Error:\s*/, '')))
+    .finally(() => $(btn).prop('disabled', false).text("SAVE"));
+  }
+
+  function quickLeave(name, date, type) {
+    const p = date.split('-'), nice = p[2] + '/' + p[1] + '/' + p[0];
+    const note = prompt(`Mark ${name} on ${type === 'half' ? 'HALF-DAY' : 'FULL-DAY'} leave for ${nice}?\n\nOptional note (e.g. Sick leave), then OK:`, "");
+    if (note === null) return;
+    sendLeave({ action: "saveLeave", name: name, from: date, to: date, type: type, note: note })
+    .then(() => { toast(`🌴 ${name}: ${nice} marked as ${type === 'half' ? 'half-day' : 'full-day'} leave`, 2800); runCompliance(); })
+    .catch(err => alert("Could not save leave: " + err.message.replace(/^Error:\s*/, '')));
+  }
+
+  function removeLeave(name, date) {
+    const p = date.split('-'), nice = p[2] + '/' + p[1] + '/' + p[0];
+    if (!confirm(`Remove ${name}'s leave on ${nice}?`)) return;
+    sendLeave({ action: "deleteLeave", name: name, date: date })
+    .then(() => { toast("Leave removed"); runCompliance(); })
+    .catch(err => alert("Could not remove leave: " + err.message.replace(/^Error:\s*/, '')));
+  }
+
+  // ---- Compliance: Excel download ----
+  function downloadComplianceExcel() {
+    if (!LAST_COMPLIANCE) { alert("Open the Compliance tab first (tap Refresh)."); return; }
+    const fmtDate = (s) => { const p = s.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
+    const rows = [["Name", "Email", "Missing Days", "Shortfall Days", "Leave Days", "Missing Dates", "Shortfall Dates (hours)", "Leave Dates"]];
+    LAST_COMPLIANCE.report.forEach(u => {
+        rows.push([
+            u.name,
+            u.email || "",
+            u.missingCount,
+            u.shortfallCount,
+            u.leaveCount || 0,
+            u.missing.map(fmtDate).join(", "),
+            u.shortfall.map(s => `${fmtDate(s.date)} (${s.hours.toFixed(2)}h)`).join(", "),
+            (u.leave || []).map(l => fmtDate(l.date) + (l.type === 'half' ? ' (half)' : '')).join(", ")
+        ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:18},{wch:26},{wch:13},{wch:14},{wch:11},{wch:40},{wch:45},{wch:40}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Compliance");
+    XLSX.writeFile(wb, `LIWA_Compliance_${LAST_COMPLIANCE.start}_to_${LAST_COMPLIANCE.end || LAST_COMPLIANCE.generatedFor}.xlsx`);
+  }
+
+  // ---- Compliance: schedule settings UI <-> sheet ----
+  function applyScheduleToUI(sch) {
+    $("#schedEnabled").val(sch.enabled ? "on" : "off");
+    // populate hour dropdown once
+    if ($("#schedHour option").length === 0) {
+        let opts = "";
+        for (let h = 0; h < 24; h++) { const lab = (h<10?'0':'')+h+":00"; opts += `<option value="${h}">${lab}</option>`; }
+        $("#schedHour").html(opts);
+    }
+    $("#schedHour").val(sch.hour != null ? sch.hour : 9);
+    const days = (sch.days || "1,2,3,4,5").toString().split(',').map(s => s.trim());
+    $(".sched-day").each(function(){ this.checked = days.indexOf(this.value) > -1; });
+    $("#schedStatus").text(sch.lastSent ? `Last auto-send: ${sch.lastSent}` : "No auto-send has run yet.");
+  }
+
+  function saveSchedule(btn) {
+    const enabled = $("#schedEnabled").val() === "on";
+    const hour = parseInt($("#schedHour").val(), 10);
+    const days = $(".sched-day:checked").map(function(){ return this.value; }).get().join(',');
+    $(btn).prop('disabled', true).text("SAVING…");
+    fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "saveSchedule", isAdmin: true, enabled: enabled, hour: hour, days: days }) })
+    .then(r => r.json())
+    .then(() => { $(btn).prop('disabled', false).text("SAVE SCHEDULE"); $("#schedStatus").text("Schedule saved. The daily trigger will use these settings."); })
+    .catch(() => { $(btn).prop('disabled', false).text("SAVE SCHEDULE"); alert("Could not save schedule."); });
+  }
+
+  // ---- Compliance: on-demand emails ----
+  function emailReportToAdmin(btn) {
+    $(btn).prop('disabled', true).text("Sending…");
+    fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "emailAdminReport", isAdmin: true, from: $("#compFrom").val(), to: $("#compTo").val(), employee: $("#compEmp").val() }) })
+    .then(r => r.json())
+    .then(res => {
+        $(btn).prop('disabled', false).text("✉️ Email me the report");
+        alert(res.error ? res.error : (res.message || "Report emailed to you."));
+    })
+    .catch(() => { $(btn).prop('disabled', false).text("✉️ Email me the report"); alert("Could not send."); });
+  }
+
+  function sendNudgesNow(btn) {
+    if (!confirm("Send the missing/shortfall nudge email to every employee who has gaps, right now?")) return;
+    $(btn).prop('disabled', true).text("Sending…");
+    fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "sendNudgesNow", isAdmin: true }) })
+    .then(r => r.json())
+    .then(res => {
+        $(btn).prop('disabled', false).text("🔔 Send nudges now");
+        alert(res.error ? res.error : (res.message || "Nudges sent."));
+    })
+    .catch(() => { $(btn).prop('disabled', false).text("🔔 Send nudges now"); alert("Could not send."); });
+  }
+
+  // Departments come from the Users sheet (admin-only field). Fall back to a sensible
+  // default pair if nothing has been assigned yet, so filters aren't empty on day one.
+  function getDepartmentOptionsHtml() {
+    let depts = [...new Set((MASTER_DATA.staff || []).map(s => s.department).filter(Boolean))].sort();
+    if (depts.length === 0) depts = ["Finance", "Creative"];
+    return '<option value="ALL">All Departments</option>' +
+        depts.map(d => `<option value="${d}">${d}</option>`).join('') +
+        '<option value="UNASSIGNED">Unassigned</option>';
+  }
+
+  // For a department head, narrows a log set down to just their own department (by staff
+  // membership) before deriving filter option lists — so "All Staff"/"All Projects" only
+  // ever lists people/projects that actually belong to their team, not the whole company.
+  function scopeLogsToDeptIfNeeded(logs) {
+    if (!IS_DEPTHEAD || !MY_DEPARTMENT) return logs;
+    const myDept = MY_DEPARTMENT.toLowerCase().trim();
+    return logs.filter(r => departmentOf(r[7]).toLowerCase().trim() === myDept);
+  }
+
+  function populateFilters() {
+    const scoped = scopeLogsToDeptIfNeeded(MASTER_DATA.logs);
+    const users = [...new Set(scoped.map(r => r[7].toString().trim()))].sort();
+    const projs = [...new Set(scoped.map(r => r[4].toString().trim()))].sort();
+    $("#employeeFilter").html('<option value="ALL">All Staff</option>' + users.map(u => `<option value="${u}">${u}</option>`).join(''));
+    $("#projectFilter").html('<option value="ALL">All Projects</option>' + projs.map(p => `<option value="${p}">${p}</option>`).join(''));
+    $("#departmentFilter").html(getDepartmentOptionsHtml());
+    lockDeptFilterIfNeeded("#departmentFilter");
+  }
+
+  // Same idea as populateFilters(), for the Daily Overview grid's own filter row.
+  function populateOverviewFilters() {
+    const scoped = scopeLogsToDeptIfNeeded(MASTER_DATA.logs);
+    const users = [...new Set(scoped.map(r => r[7].toString().trim()))].sort();
+    const projs = [...new Set(scoped.map(r => r[4].toString().trim()))].sort();
+    $("#ovEmpFilter").html('<option value="ALL">All Staff</option>' + users.map(u => `<option value="${u}">${u}</option>`).join(''));
+    $("#ovProjFilter").html('<option value="ALL">All Projects</option>' + projs.map(p => `<option value="${p}">${p}</option>`).join(''));
+    $("#ovDeptFilter").html(getDepartmentOptionsHtml());
+    lockDeptFilterIfNeeded("#ovDeptFilter");
+    if (IS_DEPTHEAD) renderTeamOverview(); // re-apply now that the filter is locked to their department
+  }
+
+  // name (as stored on a log row, r[7]) -> department, case-insensitive.
+  function departmentOf(name) {
+    const n = (name || "").toString().toLowerCase().trim();
+    const s = (MASTER_DATA.staff || []).find(x => x.name.toLowerCase().trim() === n);
+    return s && s.department ? s.department : "";
+  }
+
+  function checkFuzzy(input, type) {
+    const val = input.value.toLowerCase().trim();
+    const list = type === 'client' ? MASTER_DATA.clients : MASTER_DATA.projects;
+    const matches = list.filter(i => i.toLowerCase().includes(val));
+    const exactMatch = list.find(i => i.toLowerCase() === val);
+    let warning = $(`#fuzzy-${type}`);
+    if (val.length > 1 && matches.length > 0) {
+        warning.html(`⚠️ Similar: <b>${matches.slice(0, 3).join(", ")}</b>`).css("display", "block");
+        if(exactMatch) warning.css("background", "#f8d7da").css("color", "#721c24");
+        else warning.css("background", "#fff3cd").css("color", "#856404");
+    } else { warning.css("display", "none"); }
+  }
+
+  function toggleLock() { let i = $("#startTime"); i.prop("readonly", !i.prop("readonly")); $("#lockToggle").text(i.prop("readonly") ? "🔒" : "🔓"); }
+  function saveCurrency() { fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "saveCurrency", value: $("#currencySymbol").val(), isAdmin: true }) }).then(() => refresh()); }
+  function saveRate() { fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "saveRate", name: $("#finName").val(), rate: $("#finRate").val(), isAdmin: true }) }).then(() => { $("#finName").val(""); $("#finRate").val(""); refresh(); }); }
+  // Case-insensitive, whitespace-normalized comparison key: trims the ends and collapses
+  // any run of internal spaces to one, so "Client  A", " client a ", and "CLIENT A" all
+  // match as the same entry.
+  function normalizeOptionValue(v) {
+    return (v || "").toString().trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  function addOption(type) {
+    const inputId = `#new${type.charAt(0).toUpperCase() + type.slice(1)}`;
+    const val = ($(inputId).val() || "").toString().trim();
+    if (!val) return;
+
+    const list = type === 'client' ? MASTER_DATA.clients : MASTER_DATA.projects;
+    const normNew = normalizeOptionValue(val);
+    const dupe = list.find(i => normalizeOptionValue(i) === normNew);
+    if (dupe) {
+        alert(`"${dupe}" already exists as a ${type}. Please pick it from the list instead of adding a duplicate.`);
+        return;
+    }
+
+    fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "addOption", type: type, value: val }) })
+    .then(r => r.json())
+    .then(res => {
+        if (res.error) { alert(res.error); return; }
+        $(inputId).val(""); $(`#fuzzy-${type}`).hide(); refresh();
+    })
+    .catch(() => alert("Could not add — network error, please try again."));
+  }
+
+  // ---------- Floating live timer widget ----------
+  // Tracks real elapsed time to the second (not just to the minute like the manual form),
+  // then saves through the same saveLog endpoint using HH:MM:SS start/end times.
+  let TW_RUNNING = false, TW_START_MS = null, TW_INTERVAL = null;
+  let PIP_WINDOW = null;
+  const TW_STORAGE_KEY = 'liwa_timer_state';
+  const TW_OPEN_KEY = 'liwa_timer_widget_open';
+  const TW_SIZE_KEY = 'liwa_timer_widget_size';
+
+  // The widget's DOM node may currently live in the main document or, if popped out,
+  // inside its own separate popup window's document. Find it wherever it is.
+  function twDoc() { return (PIP_WINDOW && !PIP_WINDOW.closed) ? PIP_WINDOW.document : document; }
+  function twQ(sel) { return $(sel, twDoc()); }
+
+  // Kept as a no-op so existing call sites after a save/refresh don't need touching —
+  // the autocomplete below reads straight from MASTER_DATA.clients/projects live, on every
+  // keystroke, rather than needing a pre-built list refreshed after each server round-trip.
+  function updateWidgetAutocomplete() {}
+
+  // Custom suggestions dropdown for the widget's Client/Project fields. A native <datalist>
+  // was used originally, but its popup didn't render reliably once the widget moved into a
+  // separate window — so this is plain DOM/CSS instead, which renders identically wherever
+  // the widget's node currently lives (main tab or popped-out window).
+  function setupTwAutocomplete(inputId, suggestId, getOptions) {
+    const input = document.getElementById(inputId);
+    const box = document.getElementById(suggestId);
+    if (!input || !box) return;
+
+    function render(matches) {
+      if (!matches.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      box.innerHTML = matches.slice(0, 8).map(m => `<div>${m}</div>`).join('');
+      box.style.display = 'block';
+    }
+    function filterAndShow() {
+      const val = input.value.toLowerCase().trim();
+      const opts = getOptions() || [];
+      render(val ? opts.filter(o => o.toLowerCase().includes(val)) : opts);
+    }
+    input.addEventListener('input', filterAndShow);
+    input.addEventListener('focus', filterAndShow);
+    // mousedown (not click) so this fires before the input's blur hides the box
+    box.addEventListener('mousedown', (e) => {
+      const item = e.target.closest('div');
+      if (!item) return;
+      input.value = item.textContent;
+      box.style.display = 'none'; box.innerHTML = '';
+    });
+    input.addEventListener('blur', () => { setTimeout(() => { box.style.display = 'none'; }, 150); });
+  }
+
+  // Converts the widget from its initial right/bottom CSS anchor to an explicit left/top
+  // pixel position (locked to wherever it currently sits on screen), just once. This lets
+  // the custom bottom-left resize handle grow the box leftward by adjusting `left` directly,
+  // without the box also drifting because of a `right` offset still being in effect.
+  function anchorWidgetPosition() {
+    const el = document.getElementById('timerWidget');
+    if (!el || el.style.left) return; // already anchored — don't touch it again
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return; // not actually rendered yet
+    el.style.left = Math.round(rect.left) + 'px';
+    el.style.top = Math.round(rect.top) + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+  }
+
+  function showTimerWidget() {
+    $("#timerWidget").show();
+  }
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  function initTimerWidget() {
+    if (IS_ADMIN && !IS_DEPTHEAD) return;
+    $("#timerFab").show();
+    bindTimerControls();
+
+    // Restore last saved size (from dragging the resize handle).
+    try {
+      const sizeRaw = localStorage.getItem(TW_SIZE_KEY);
+      if (sizeRaw) {
+        const sz = JSON.parse(sizeRaw);
+        if (sz.w) $("#timerWidget").css("width", sz.w + "px");
+        if (sz.h) $("#timerWidget").css("height", sz.h + "px");
+      }
+    } catch (e) {}
+
+    // Restore whether the panel was left open or closed. Defaults to OPEN so the
+    // widget stays "pinned" on screen rather than needing to be reopened every visit.
+    let openPref = null;
+    try { openPref = localStorage.getItem(TW_OPEN_KEY); } catch (e) {}
+    if (openPref !== "0") { showTimerWidget(); }
+
+    // Save size whenever the user drags the native resize handle.
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const w = Math.round(entry.contentRect.width), h = Math.round(entry.contentRect.height);
+          try { localStorage.setItem(TW_SIZE_KEY, JSON.stringify({ w, h })); } catch (e) {}
+        }
+      });
+      ro.observe(document.getElementById("timerWidget"));
+    }
+
+    // Restore a running timer, if one was left going.
+    let raw = null;
+    try { raw = localStorage.getItem(TW_STORAGE_KEY); } catch (e) {}
+    if (!raw) return;
+    try {
+      const st = JSON.parse(raw);
+      if (st && st.user === LOGGED_IN_USER && st.startMs) {
+        TW_START_MS = st.startMs; TW_RUNNING = true;
+        twQ("#twClient").val(st.client || ''); twQ("#twProject").val(st.project || ''); twQ("#twNotes").val(st.notes || '');
+        setTimerRunningUI(true);
+        showTimerWidget();
+        tickTimerDisplay();
+        TW_INTERVAL = setInterval(tickTimerDisplay, 1000);
+      }
+    } catch (e) {}
+  }
+
+  // Wired with addEventListener (not inline HTML attributes) so the handlers keep working
+  // even after the widget's DOM node is moved into a separate popped-out window.
+  function bindTimerControls() {
+    const playBtn = document.getElementById('twPlayBtn');
+    const resetBtn = document.getElementById('twResetBtn');
+    const closeBtn = document.getElementById('twCloseBtn');
+    const popBtn = document.getElementById('twPopBtn');
+    if (playBtn) playBtn.addEventListener('click', toggleTimerRun);
+    if (resetBtn) resetBtn.addEventListener('click', resetTimerWidget);
+    if (closeBtn) closeBtn.addEventListener('click', () => toggleTimerWidget(false));
+    if (popBtn) popBtn.addEventListener('click', popOutTimerWidget);
+    initResizeHandle();
+    setupTwAutocomplete('twClient', 'twClientSuggest', () => MASTER_DATA.clients);
+    setupTwAutocomplete('twProject', 'twProjectSuggest', () => MASTER_DATA.projects);
+  }
+
+  // Drags the widget's width/height from its BOTTOM-LEFT corner: moving the handle left grows
+  // the box leftward (right edge stays put), moving it down grows the box downward (top stays
+  // put) — the opposite math from a bottom-right handle, since the growing edge is now the left.
+  function initResizeHandle() {
+    const handle = document.getElementById('twResizeHandle');
+    const widget = document.getElementById('timerWidget');
+    if (!handle || !widget) return;
+    let startX, startY, startW, startH, startLeft, startTop;
+
+    function onMove(e) {
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      const minW = 260, minH = 210;
+      const maxW = Math.round(window.innerWidth * 0.9), maxH = Math.round(window.innerHeight * 0.8);
+      let newW = Math.min(maxW, Math.max(minW, startW - dx));
+      let newH = Math.min(maxH, Math.max(minH, startH + dy));
+      widget.style.width = newW + 'px';
+      widget.style.height = newH + 'px';
+      widget.style.left = (startLeft + (startW - newW)) + 'px';
+      widget.style.top = startTop + 'px';
+      try { localStorage.setItem(TW_SIZE_KEY, JSON.stringify({ w: newW, h: newH })); } catch (err) {}
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      anchorWidgetPosition(); // make sure left/top anchoring is in place before dragging
+      const rect = widget.getBoundingClientRect();
+      startX = e.clientX; startY = e.clientY;
+      startW = rect.width; startH = rect.height;
+      startLeft = rect.left; startTop = rect.top;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  // Opens the widget in its own real popup window (not a Document Picture-in-Picture overlay).
+  // Windows treats this as a normal window: it gets its own taskbar icon, and can be minimized
+  // down to just that icon and restored by clicking it — exactly the "send it to the taskbar"
+  // behavior asked for. Trade-off: unlike the PiP overlay, this window does NOT float on top
+  // of other apps automatically — clicking into another app puts it behind, same as any window.
+  function popOutTimerWidget() {
+    if (PIP_WINDOW && !PIP_WINDOW.closed) { PIP_WINDOW.focus(); return; }
+    const widget = document.getElementById('timerWidget');
+    const rect = widget.getBoundingClientRect();
+    const w = Math.max(300, Math.round(rect.width)), h = Math.max(230, Math.round(rect.height));
+
+    const popup = window.open('', 'liwaTimerWidget', `width=${w},height=${h},resizable=yes,scrollbars=yes`);
+    if (!popup) { alert("Pop-out was blocked — please allow popups for this site, then press Pin again."); return; }
+    PIP_WINDOW = popup;
+    popup.document.title = "LIWA Timer";
+
+    // Copy the page's styling into the pop-out window so the widget still looks right.
+    [...document.styleSheets].forEach((sheet) => {
+      try {
+        const css = [...sheet.cssRules].map(r => r.cssText).join('');
+        const style = popup.document.createElement('style');
+        style.textContent = css;
+        popup.document.head.appendChild(style);
+      } catch (e) {
+        if (sheet.href) {
+          const link = popup.document.createElement('link');
+          link.rel = 'stylesheet'; link.href = sheet.href;
+          popup.document.head.appendChild(link);
+        }
+      }
+    });
+
+    popup.document.body.style.margin = '0';
+    popup.document.body.style.background = '#141414';
+    popup.document.body.appendChild(widget);
+    widget.style.position = 'static';
+    widget.style.width = '100%';
+    widget.style.height = '100%';
+    widget.style.boxSizing = 'border-box';
+    widget.style.display = 'block';
+    if (TW_RUNNING) tickTimerDisplay();
+
+    // When the pop-out window is closed, bring the widget back home into the main tab.
+    popup.addEventListener('pagehide', () => {
+      const home = document.getElementById('mainApp');
+      widget.style.position = 'fixed';
+      widget.style.width = ''; widget.style.height = '';
+      home.appendChild(widget);
+      PIP_WINDOW = null;
+      try { localStorage.setItem(TW_OPEN_KEY, "1"); } catch (e) {}
+      showTimerWidget();
+    }, { once: true });
+  }
+
+  function toggleTimerWidget(show) {
+    if (PIP_WINDOW && !PIP_WINDOW.closed) { PIP_WINDOW.focus(); return; }
+    const willShow = (show !== undefined) ? show : !$("#timerWidget").is(":visible");
+    $("#timerWidget").toggle(willShow);
+    try { localStorage.setItem(TW_OPEN_KEY, willShow ? "1" : "0"); } catch (e) {}
+  }
+
+  function setTimerRunningUI(running) {
+    twQ("#twPlayBtn").toggleClass("tw-running", running).text(running ? "❚❚" : "▶").attr("title", running ? "Pause & save" : "Start");
+    $("#timerFab").toggleClass("tf-running", running);
+    twQ("#twClient, #twProject").prop("disabled", running);
+    twQ("#twHint").text(running ? "Timer running — press pause to save this entry." : "Pick a client & project, then press play. Seconds are tracked and saved exactly.");
+  }
+
+  function tickTimerDisplay() {
+    if (!TW_RUNNING || !TW_START_MS) return;
+    const elapsedSec = Math.floor((Date.now() - TW_START_MS) / 1000);
+    const h = Math.floor(elapsedSec / 3600), m = Math.floor((elapsedSec % 3600) / 60), s = elapsedSec % 60;
+    const timeStr = pad2(h) + ":" + pad2(m) + ":" + pad2(s);
+    twQ("#twDisplay").text(timeStr);
+    updatePopupTitle(timeStr);
+  }
+
+  function updatePopupTitle(timeStr) {
+    if (!PIP_WINDOW || PIP_WINDOW.closed) return;
+    const client = (twQ("#twClient").val() || "").trim() || "No client";
+    const project = (twQ("#twProject").val() || "").trim() || "No project";
+    PIP_WINDOW.document.title = `⏱ ${timeStr} · ${client} · ${project}`;
+  }
+
+  function resetPopupTitle() {
+    if (PIP_WINDOW && !PIP_WINDOW.closed) PIP_WINDOW.document.title = "LIWA Timer";
+  }
+
+  function persistTimerState() {
+    try {
+      localStorage.setItem(TW_STORAGE_KEY, JSON.stringify({
+        user: LOGGED_IN_USER, startMs: TW_START_MS,
+        client: twQ("#twClient").val(), project: twQ("#twProject").val(), notes: twQ("#twNotes").val()
+      }));
+    } catch (e) {}
+  }
+
+  function clearTimerState() { try { localStorage.removeItem(TW_STORAGE_KEY); } catch (e) {} }
+
+  function resetTimerWidget() {
+    if (TW_RUNNING && !confirm("Discard the current running timer without saving?")) return;
+    TW_RUNNING = false; TW_START_MS = null;
+    if (TW_INTERVAL) { clearInterval(TW_INTERVAL); TW_INTERVAL = null; }
+    clearTimerState();
+    twQ("#twDisplay").text("00:00:00");
+    twQ("#twClient, #twProject, #twNotes").val("");
+    setTimerRunningUI(false);
+    resetPopupTitle();
+  }
+
+  function toggleTimerRun() {
+    if (!TW_RUNNING) {
+      const client = twQ("#twClient").val().trim(), project = twQ("#twProject").val().trim();
+      if (!client || !project) { alert("Pick a Client and Project before starting the timer."); return; }
+      TW_RUNNING = true; TW_START_MS = Date.now();
+      persistTimerState();
+      setTimerRunningUI(true);
+      tickTimerDisplay();
+      TW_INTERVAL = setInterval(tickTimerDisplay, 1000);
+    } else {
+      TW_RUNNING = false;
+      if (TW_INTERVAL) { clearInterval(TW_INTERVAL); TW_INTERVAL = null; }
+      saveTimerEntry();
+    }
+  }
+
+  // Timer save uses the same instant (optimistic) save as the form.
+  function saveTimerEntry() {
+    const startDate = new Date(TW_START_MS), endDate = new Date();
+    const dateStr = ymd(startDate);
+    const startHMS = pad2(startDate.getHours()) + ':' + pad2(startDate.getMinutes()) + ':' + pad2(startDate.getSeconds());
+    const endHMS = pad2(endDate.getHours()) + ':' + pad2(endDate.getMinutes()) + ':' + pad2(endDate.getSeconds());
+
+    const d = {
+        id: "",
+        date: dateStr,
+        startTime: startHMS,
+        endTime: endHMS,
+        client: twQ("#twClient").val().trim(),
+        project: twQ("#twProject").val().trim(),
+        notes: twQ("#twNotes").val(),
+        user: LOGGED_IN_USER
+    };
+
+    const clash = findLocalOverlap(d.date, d.startTime, d.endTime, "");
+    if (clash) {
+        // Don't lose the time: drop it into the manual form so it can be adjusted and saved.
+        alert(`Timer entry ${to12h(startHMS.slice(0,5))} - ${to12h(endHMS.slice(0,5))} overlaps '${clash[4]}' (${to12h(clash[1])} - ${to12h(clash[2])}).\n\nIt has been copied into the entry form — adjust the times and press Save.`);
+        $("#editRowIndex").val(""); $("#date").val(dateStr);
+        $("#startTime").val(startHMS.slice(0,5)).prop("readonly", false); $("#lockToggle").text("🔓");
+        $("#endTime").val(endHMS.slice(0,5));
+        $("#clientSelect").val(d.client); $("#projectSelect").val(d.project); $("#notes").val(d.notes);
+    } else {
+        submitLogOptimistic(d);
+        autoFillStartTime();
+        toast("✓ Timer entry saved");
+    }
+
+    clearTimerState();
+    TW_START_MS = null;
+    twQ("#twDisplay").text("00:00:00");
+    twQ("#twNotes").val("");
+    setTimerRunningUI(false);
+    resetPopupTitle();
+  }
+</script>
+</body>
+</html>
